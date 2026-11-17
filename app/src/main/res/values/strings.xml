@@ -23,6 +23,8 @@
     <string name="error_generic_message">We could not load the collection. Please try again.</string>
 
     <string name="detail_back">Back</string>
+    <string name="detail_view_full">View full artwork</string>
+    <string name="viewer_close">Close</string>
     <string name="detail_loading">Loading the artwork</string>
     <string name="detail_artist">Artist</string>
     <string name="detail_date">Date</string>

@@ -4,9 +4,11 @@ import androidx.compose.runtime.Composable
 import com.android.tools.screenshot.PreviewTest
 import com.jorhetfield.atelier.designsystem.preview.AtelierScreenPreviews
 import com.jorhetfield.atelier.designsystem.theme.AtelierTheme
+import com.jorhetfield.atelier.domain.model.DominantColor
 import com.jorhetfield.atelier.ui.detail.DetailScreenContent
 import com.jorhetfield.atelier.ui.detail.DetailUiState
 import com.jorhetfield.atelier.ui.model.ArtworkDetailUi
+import com.jorhetfield.atelier.ui.model.ArtworkImageUi
 import com.jorhetfield.atelier.ui.model.ArtworkUi
 import com.jorhetfield.atelier.ui.model.ErrorKind
 import com.jorhetfield.atelier.ui.search.SearchContent
@@ -25,9 +27,24 @@ private val titles =
         "Paris Street; Rainy Day",
     )
 
+// Varied hues show how each card takes the color of its own artwork. No placeholder or url is real.
+private val hues = listOf(205, 30, 120, 340, 55, 260, 170, 15)
+
 private val sampleArtworks =
     titles.mapIndexed { index, title ->
-        ArtworkUi(id = index, title = title, artist = "Georges Seurat", image = null)
+        ArtworkUi(
+            id = index,
+            title = title,
+            artist = "Georges Seurat",
+            image =
+                ArtworkImageUi(
+                    id = "sample-$index",
+                    contentDescription = null,
+                    placeholder = null,
+                    aspectRatio = if (index % 2 == 0) 1.3f else 0.8f,
+                    dominantColor = DominantColor(hue = hues[index], saturation = 45, lightness = 50),
+                ),
+        )
     }
 
 private val sampleDetail =
@@ -43,7 +60,7 @@ private val sampleDetail =
         style = "Pointillism",
         isPublicDomain = true,
         image = null,
-        dominantColor = null,
+        dominantColor = DominantColor(hue = 59, saturation = 12, lightness = 52),
     )
 
 @Composable
@@ -65,7 +82,7 @@ private fun Search(
 @Composable
 private fun Detail(state: DetailUiState) {
     AtelierTheme(dynamicColor = false) {
-        DetailScreenContent(state = state, onBack = {}, onRetry = {})
+        DetailScreenContent(state = state, onBack = {}, onViewArtwork = {}, onRetry = {})
     }
 }
 

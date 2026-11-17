@@ -2,8 +2,10 @@ package com.jorhetfield.atelier.ui.model
 
 import com.jorhetfield.atelier.domain.error.ArtworkException
 import com.jorhetfield.atelier.domain.model.ArtworkImage
+import com.jorhetfield.atelier.domain.model.DominantColor
 import com.jorhetfield.atelier.mocks.artwork
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -32,6 +34,30 @@ class ArtworkUiMapperTest {
     fun `an image without dimensions gets a default ratio`() {
         assertEquals(4f / 3f, artwork(image = image(null, null)).toUi().image?.aspectRatio)
         assertEquals(4f / 3f, artwork(image = image(0, 0)).toUi().image?.aspectRatio)
+    }
+
+    @Test
+    fun `the dominant color travels with the image and with the detail`() {
+        val color = DominantColor(hue = 59, saturation = 12, lightness = 52)
+        val source = artwork(image = image(10, 10)).copy(dominantColor = color)
+
+        assertEquals(color, source.toUi().image?.dominantColor)
+        assertEquals(color, source.toDetailUi().image?.dominantColor)
+        assertEquals(color, source.toDetailUi().dominantColor)
+    }
+
+    @Test
+    fun `a color with enough saturation tints as itself`() {
+        val color = DominantColor(hue = 200, saturation = 80, lightness = 50)
+
+        assertEquals(color.toColor(), color.toTint())
+    }
+
+    @Test
+    fun `a nearly grey color is given some saturation so the tint is visible`() {
+        val grey = DominantColor(hue = 59, saturation = 5, lightness = 52)
+
+        assertNotEquals(grey.toColor(), grey.toTint())
     }
 
     @Test

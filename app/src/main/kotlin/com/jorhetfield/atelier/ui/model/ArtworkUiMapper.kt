@@ -2,6 +2,7 @@ package com.jorhetfield.atelier.ui.model
 
 import com.jorhetfield.atelier.domain.model.Artwork
 import com.jorhetfield.atelier.domain.model.ArtworkImage
+import com.jorhetfield.atelier.domain.model.DominantColor
 
 private const val DEFAULT_ASPECT_RATIO = 4f / 3f
 
@@ -10,7 +11,7 @@ fun Artwork.toUi(): ArtworkUi =
         id = id,
         title = title,
         artist = artist?.substringBefore(" ("),
-        image = image?.toUi(),
+        image = image?.toUi(dominantColor),
     )
 
 fun Artwork.toDetailUi(): ArtworkDetailUi =
@@ -25,14 +26,14 @@ fun Artwork.toDetailUi(): ArtworkDetailUi =
         classification = classification,
         style = style,
         isPublicDomain = isPublicDomain,
-        image = image?.toUi(),
+        image = image?.toUi(dominantColor),
         dominantColor = dominantColor,
     )
 
 // IIIF serves any width on request, so the screen picks the size instead of the data layer.
 fun ArtworkImageUi.url(width: Int): String = "https://www.artic.edu/iiif/2/$id/full/$width,/0/default.jpg"
 
-private fun ArtworkImage.toUi(): ArtworkImageUi {
+private fun ArtworkImage.toUi(dominantColor: DominantColor?): ArtworkImageUi {
     val imageWidth = width
     val imageHeight = height
     val ratio =
@@ -41,5 +42,11 @@ private fun ArtworkImage.toUi(): ArtworkImageUi {
         } else {
             DEFAULT_ASPECT_RATIO
         }
-    return ArtworkImageUi(id = id, contentDescription = altText, placeholder = placeholder, aspectRatio = ratio)
+    return ArtworkImageUi(
+        id = id,
+        contentDescription = altText,
+        placeholder = placeholder,
+        aspectRatio = ratio,
+        dominantColor = dominantColor,
+    )
 }

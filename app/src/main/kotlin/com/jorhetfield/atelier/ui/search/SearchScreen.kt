@@ -4,27 +4,30 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -58,6 +61,9 @@ fun SearchScreen(
     )
 }
 
+// LargeFlexibleTopAppBar is the expressive collapsing title bar; it graduated from experimental in
+// Material 3 1.5, but the opt-in is kept for the scroll behavior API.
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchScreenContent(
     state: SearchUiState,
@@ -68,61 +74,73 @@ fun SearchScreenContent(
     modifier: Modifier = Modifier,
 ) {
     val motion = MaterialTheme.motionScheme
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .windowInsetsPadding(
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                ),
-    ) {
-        SearchHeader(query = state.query, onQueryChange = onQueryChange, onSubmit = onSubmit)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-        AnimatedContent(
-            targetState = state.content,
-            contentKey = { it::class },
-            transitionSpec = {
-                fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
-            },
-            modifier = Modifier.weight(1f).imePadding(),
-            label = "search content",
-        ) { content ->
-            when (content) {
-                SearchContent.Idle -> {
-                    Centered {
-                        AtelierEmptyState(
-                            title = stringResource(R.string.idle_title),
-                            message = stringResource(R.string.idle_message),
-                        )
+    Scaffold(
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                subtitle = { Text(stringResource(R.string.search_tagline)) },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    ),
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            SearchField(query = state.query, onQueryChange = onQueryChange, onSubmit = onSubmit)
+
+            AnimatedContent(
+                targetState = state.content,
+                contentKey = { it::class },
+                transitionSpec = {
+                    fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
+                },
+                modifier = Modifier.weight(1f).imePadding(),
+                label = "search content",
+            ) { content ->
+                when (content) {
+                    SearchContent.Idle -> {
+                        Centered {
+                            AtelierEmptyState(
+                                title = stringResource(R.string.idle_title),
+                                message = stringResource(R.string.idle_message),
+                            )
+                        }
                     }
-                }
 
-                is SearchContent.Loading -> {
-                    LoadingContent(content, onArtworkClick)
-                }
-
-                is SearchContent.Results -> {
-                    ResultsGrid(items = content.items, onArtworkClick = onArtworkClick)
-                }
-
-                is SearchContent.NoResults -> {
-                    Centered {
-                        AtelierEmptyState(
-                            title = stringResource(R.string.no_results_title, content.query),
-                            message = stringResource(R.string.no_results_message),
-                        )
+                    is SearchContent.Loading -> {
+                        LoadingContent(content, onArtworkClick)
                     }
-                }
 
-                is SearchContent.Failure -> {
-                    Centered {
-                        AtelierErrorState(
-                            title = stringResource(content.error.titleRes),
-                            message = stringResource(content.error.messageRes),
-                            retryLabel = stringResource(R.string.retry),
-                            onRetry = onRetry,
-                        )
+                    is SearchContent.Results -> {
+                        ResultsGrid(items = content.items, onArtworkClick = onArtworkClick)
+                    }
+
+                    is SearchContent.NoResults -> {
+                        Centered {
+                            AtelierEmptyState(
+                                title = stringResource(R.string.no_results_title, content.query),
+                                message = stringResource(R.string.no_results_message),
+                            )
+                        }
+                    }
+
+                    is SearchContent.Failure -> {
+                        Centered {
+                            AtelierErrorState(
+                                title = stringResource(content.error.titleRes),
+                                message = stringResource(content.error.messageRes),
+                                retryLabel = stringResource(R.string.retry),
+                                onRetry = onRetry,
+                            )
+                        }
                     }
                 }
             }
@@ -131,41 +149,23 @@ fun SearchScreenContent(
 }
 
 @Composable
-private fun SearchHeader(
+private fun SearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val spacing = AtelierTheme.spacing
     val keyboard = LocalSoftwareKeyboardController.current
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = spacing.lg)
-                .padding(top = spacing.xl, bottom = spacing.md),
-    ) {
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.displaySmall,
-        )
-        Text(
-            text = stringResource(R.string.search_tagline),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = spacing.lg),
-        )
-        AtelierSearchField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = stringResource(R.string.search_placeholder),
-            clearContentDescription = stringResource(R.string.search_clear),
-            onSearch = {
-                onSubmit()
-                keyboard?.hide()
-            },
-        )
-    }
+    AtelierSearchField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = stringResource(R.string.search_placeholder),
+        clearContentDescription = stringResource(R.string.search_clear),
+        modifier = Modifier.padding(horizontal = AtelierTheme.spacing.lg, vertical = AtelierTheme.spacing.sm),
+        onSearch = {
+            onSubmit()
+            keyboard?.hide()
+        },
+    )
 }
 
 // The previous results are only decoration while loading: blurred, dimmed, hidden from
