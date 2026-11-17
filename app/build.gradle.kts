@@ -35,6 +35,21 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Kept in :app: in a library module the engine cannot resolve the R classes.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        screenshotTests.create("screenshotTest") {
+            engineVersion = libs.versions.screenshot.get()
+            targetVariants.clear()
+            targetVariants.add("debug")
+
+            dependencies {
+                implementation(libs.compose.ui.tooling)
+                implementation(libs.screenshot.validation.api)
+            }
+        }
+    }
 }
 
 kotlin {
@@ -44,6 +59,7 @@ kotlin {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":data"))
+    implementation(project(":designsystem"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
