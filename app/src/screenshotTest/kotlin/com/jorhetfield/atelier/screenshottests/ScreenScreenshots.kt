@@ -7,6 +7,10 @@ import com.jorhetfield.atelier.designsystem.theme.AtelierTheme
 import com.jorhetfield.atelier.domain.model.DominantColor
 import com.jorhetfield.atelier.ui.detail.DetailScreenContent
 import com.jorhetfield.atelier.ui.detail.DetailUiState
+import com.jorhetfield.atelier.ui.home.HomeShelf
+import com.jorhetfield.atelier.ui.home.HomeUiState
+import com.jorhetfield.atelier.ui.home.ShelfContent
+import com.jorhetfield.atelier.ui.home.ShelfUi
 import com.jorhetfield.atelier.ui.model.ArtworkDetailUi
 import com.jorhetfield.atelier.ui.model.ArtworkImageUi
 import com.jorhetfield.atelier.ui.model.ArtworkUi
@@ -63,17 +67,32 @@ private val sampleDetail =
         dominantColor = DominantColor(hue = 59, saturation = 12, lightness = 52),
     )
 
+// Three of the shelves with pictures, one still loading and one that failed (and so is left out).
+private val sampleHome =
+    HomeUiState(
+        shelves =
+            listOf(
+                ShelfUi(HomeShelf.Highlights, ShelfContent.Loaded(sampleArtworks)),
+                ShelfUi(HomeShelf.Monet, ShelfContent.Loaded(sampleArtworks.reversed())),
+                ShelfUi(HomeShelf.VanGogh, ShelfContent.Loading),
+                ShelfUi(HomeShelf.Picasso, ShelfContent.Failed(ErrorKind.Generic)),
+            ),
+    )
+
 @Composable
 private fun Search(
     content: SearchContent,
     query: String,
+    home: HomeUiState = sampleHome,
 ) {
     AtelierTheme(dynamicColor = false) {
         SearchScreenContent(
             state = SearchUiState(query = query, content = content),
+            home = home,
             onQueryChange = {},
             onSubmit = {},
             onRetry = {},
+            onHomeRetry = {},
             onArtworkClick = {},
         )
     }

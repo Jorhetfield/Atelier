@@ -13,6 +13,9 @@ internal fun SearchResponseDto.toArtworks(): List<Artwork> =
         .filter { it.score == null || it.score >= MIN_RELEVANCE }
         .map { it.toDomain() }
 
+// A filter query has no text relevance, so there is no score to judge by and nothing to drop.
+internal fun SearchResponseDto.toHighlights(): List<Artwork> = data.map { it.toDomain() }
+
 internal fun ArtworkDto.toDomain(): Artwork =
     Artwork(
         id = id,

@@ -3,6 +3,7 @@ package com.jorhetfield.atelier.di
 import com.jorhetfield.atelier.data.createArtworkRepository
 import com.jorhetfield.atelier.domain.repository.ArtworkRepository
 import com.jorhetfield.atelier.domain.usecase.GetArtworkUseCase
+import com.jorhetfield.atelier.domain.usecase.GetHighlightsUseCase
 import com.jorhetfield.atelier.domain.usecase.SearchArtworksUseCase
 import dagger.Module
 import dagger.Provides
@@ -23,4 +24,7 @@ object DataModule {
 
     @Provides
     fun provideGetArtwork(repository: ArtworkRepository) = GetArtworkUseCase(repository)
+
+    @Provides
+    fun provideGetHighlights(repository: ArtworkRepository) = GetHighlightsUseCase(repository)
 }
