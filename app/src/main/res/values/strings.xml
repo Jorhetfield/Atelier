@@ -26,7 +26,6 @@
     <string name="detail_view_full">View full artwork</string>
     <string name="viewer_close">Close</string>
     <string name="detail_loading">Loading the artwork</string>
-    <string name="detail_artist">Artist</string>
     <string name="detail_date">Date</string>
     <string name="detail_medium">Medium</string>
     <string name="detail_origin">Origin</string>
