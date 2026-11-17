@@ -14,6 +14,14 @@ class ArtworkUiMapperTest {
     ) = ArtworkImage(id = "abc", altText = "A park", placeholder = "lqip", width = width, height = height)
 
     @Test
+    fun `a card shows the artist name without nationality and dates, the detail keeps them`() {
+        val full = artwork().copy(artist = "Georges Seurat (French, 1859-1891)")
+
+        assertEquals("Georges Seurat", full.toUi().artist)
+        assertEquals("Georges Seurat (French, 1859-1891)", full.toDetailUi().artist)
+    }
+
+    @Test
     fun `the image keeps its proportions`() {
         val ui = artwork(image = image(width = 400, height = 200)).toUi()
 

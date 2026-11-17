@@ -9,7 +9,7 @@ fun Artwork.toUi(): ArtworkUi =
     ArtworkUi(
         id = id,
         title = title,
-        artist = artist,
+        artist = artist?.substringBefore(" ("),
         image = image?.toUi(),
     )
 
