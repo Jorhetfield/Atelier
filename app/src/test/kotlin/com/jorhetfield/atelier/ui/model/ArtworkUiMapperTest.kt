@@ -67,9 +67,24 @@ class ArtworkUiMapperTest {
 
     @Test
     fun `the image url asks for the width the screen needs`() {
-        val ui = artwork(image = image(10, 10)).toUi()
+        val ui = artwork(image = image(3000, 2000)).toUi()
 
         assertEquals("https://www.artic.edu/iiif/2/abc/full/843,/0/default.jpg", ui.image?.url(843))
+    }
+
+    @Test
+    fun `the image url never asks for more pixels than the original has`() {
+        val narrowPrint = artwork(image = image(558, 3000)).toUi()
+
+        assertEquals("https://www.artic.edu/iiif/2/abc/full/558,/0/default.jpg", narrowPrint.image?.url(1200))
+        assertEquals("https://www.artic.edu/iiif/2/abc/full/558,/0/default.jpg", narrowPrint.image?.url(600))
+    }
+
+    @Test
+    fun `when the original size is unknown the requested width is used as it is`() {
+        val ui = artwork(image = image(null, null)).toUi()
+
+        assertEquals("https://www.artic.edu/iiif/2/abc/full/600,/0/default.jpg", ui.image?.url(600))
     }
 
     @Test

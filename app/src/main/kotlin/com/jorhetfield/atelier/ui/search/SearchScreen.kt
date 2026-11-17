@@ -41,6 +41,9 @@ import com.jorhetfield.atelier.designsystem.component.AtelierErrorState
 import com.jorhetfield.atelier.designsystem.component.AtelierLoadingState
 import com.jorhetfield.atelier.designsystem.component.AtelierSearchField
 import com.jorhetfield.atelier.designsystem.theme.AtelierTheme
+import com.jorhetfield.atelier.ui.home.HomeContent
+import com.jorhetfield.atelier.ui.home.HomeUiState
+import com.jorhetfield.atelier.ui.home.HomeViewModel
 import com.jorhetfield.atelier.ui.model.messageRes
 import com.jorhetfield.atelier.ui.model.titleRes
 
@@ -49,13 +52,17 @@ fun SearchScreen(
     onArtworkClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val home by homeViewModel.uiState.collectAsStateWithLifecycle()
     SearchScreenContent(
         state = state,
+        home = home,
         onQueryChange = viewModel::onQueryChange,
         onSubmit = viewModel::onSubmit,
         onRetry = viewModel::retry,
+        onHomeRetry = homeViewModel::retry,
         onArtworkClick = onArtworkClick,
         modifier = modifier,
     )
@@ -67,9 +74,11 @@ fun SearchScreen(
 @Composable
 fun SearchScreenContent(
     state: SearchUiState,
+    home: HomeUiState,
     onQueryChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onRetry: () -> Unit,
+    onHomeRetry: () -> Unit,
     onArtworkClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -107,12 +116,7 @@ fun SearchScreenContent(
             ) { content ->
                 when (content) {
                     SearchContent.Idle -> {
-                        Centered {
-                            AtelierEmptyState(
-                                title = stringResource(R.string.idle_title),
-                                message = stringResource(R.string.idle_message),
-                            )
-                        }
+                        HomeContent(state = home, onArtworkClick = onArtworkClick, onRetry = onHomeRetry)
                     }
 
                     is SearchContent.Loading -> {

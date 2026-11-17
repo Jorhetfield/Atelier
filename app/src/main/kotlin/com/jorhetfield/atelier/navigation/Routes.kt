@@ -17,4 +17,5 @@ data class ViewerRoute(
     val imageId: String,
     val contentDescription: String?,
     val aspectRatio: Float,
+    val sourceWidth: Int?,
 ) : NavKey

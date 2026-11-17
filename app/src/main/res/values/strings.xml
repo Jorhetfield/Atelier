@@ -12,6 +12,17 @@
     <string name="no_results_title">No matches for “%1$s”</string>
     <string name="no_results_message">Check the spelling or try a broader term.</string>
 
+    <string name="shelf_highlights_title">Museum highlights</string>
+    <string name="shelf_highlights_subtitle">The pieces the Art Institute puts first</string>
+    <string name="shelf_monet_title">Monet</string>
+    <string name="shelf_monet_subtitle">Light, water and haystacks</string>
+    <string name="shelf_van_gogh_title">Van Gogh</string>
+    <string name="shelf_van_gogh_subtitle">Bold color and restless brushwork</string>
+    <string name="shelf_picasso_title">Picasso</string>
+    <string name="shelf_picasso_subtitle">From the Blue Period to Cubism</string>
+    <string name="shelf_japanese_prints_title">Japanese prints</string>
+    <string name="shelf_japanese_prints_subtitle">Woodblock prints from Japan</string>
+
     <string name="retry">Try again</string>
     <string name="error_offline_title">You are offline</string>
     <string name="error_offline_message">Check your connection and try again.</string>

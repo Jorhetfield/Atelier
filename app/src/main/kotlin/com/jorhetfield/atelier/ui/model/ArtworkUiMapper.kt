@@ -30,8 +30,12 @@ fun Artwork.toDetailUi(): ArtworkDetailUi =
         dominantColor = dominantColor,
     )
 
-// IIIF serves any width on request, so the screen picks the size instead of the data layer.
-fun ArtworkImageUi.url(width: Int): String = "https://www.artic.edu/iiif/2/$id/full/$width,/0/default.jpg"
+// IIIF serves any width on request, so the screen picks the size instead of the data layer. It must not
+// ask for more pixels than the original has: some prints are only ~550 px wide and a bigger request fails.
+fun ArtworkImageUi.url(width: Int): String {
+    val requested = sourceWidth?.takeIf { it > 0 }?.let { minOf(width, it) } ?: width
+    return "https://www.artic.edu/iiif/2/$id/full/$requested,/0/default.jpg"
+}
 
 private fun ArtworkImage.toUi(dominantColor: DominantColor?): ArtworkImageUi {
     val imageWidth = width
@@ -48,5 +52,6 @@ private fun ArtworkImage.toUi(dominantColor: DominantColor?): ArtworkImageUi {
         placeholder = placeholder,
         aspectRatio = ratio,
         dominantColor = dominantColor,
+        sourceWidth = imageWidth,
     )
 }

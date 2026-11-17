@@ -82,7 +82,14 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
                         onBack = { backStack.removeLastOrNull() },
                         onViewArtwork = { image ->
                             if (backStack.lastOrNull() is DetailRoute) {
-                                backStack.add(ViewerRoute(image.id, image.contentDescription, image.aspectRatio))
+                                backStack.add(
+                                    ViewerRoute(
+                                        image.id,
+                                        image.contentDescription,
+                                        image.aspectRatio,
+                                        image.sourceWidth,
+                                    ),
+                                )
                             }
                         },
                     )
@@ -102,6 +109,7 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
                                 contentDescription = key.contentDescription,
                                 placeholder = null,
                                 aspectRatio = key.aspectRatio,
+                                sourceWidth = key.sourceWidth,
                             ),
                         onClose = { backStack.removeLastOrNull() },
                     )

@@ -15,6 +15,7 @@ data class ArtworkImageUi(
     val placeholder: String?,
     val aspectRatio: Float,
     val dominantColor: DominantColor? = null,
+    val sourceWidth: Int? = null,
 )
 
 data class ArtworkDetailUi(
