@@ -17,5 +17,6 @@ dependencyResolutionManagement {
 rootProject.name = "Atelier"
 
 include(":app")
+include(":designsystem")
 include(":domain")
 include(":data")

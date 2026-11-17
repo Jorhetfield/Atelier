@@ -1,4 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Atelier</string>
+
+    <string name="search_tagline">Art Institute of Chicago</string>
+    <string name="search_placeholder">Search artworks</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_loading">Searching the collection</string>
+
+    <string name="idle_title">Discover the collection</string>
+    <string name="idle_message">Search for an artist, a movement or a title to start exploring.</string>
+    <string name="no_results_title">No matches for “%1$s”</string>
+    <string name="no_results_message">Check the spelling or try a broader term.</string>
+
+    <string name="shelf_highlights_title">Museum highlights</string>
+    <string name="shelf_highlights_subtitle">The pieces the Art Institute puts first</string>
+    <string name="shelf_monet_title">Monet</string>
+    <string name="shelf_monet_subtitle">Light, water and haystacks</string>
+    <string name="shelf_van_gogh_title">Van Gogh</string>
+    <string name="shelf_van_gogh_subtitle">Bold color and restless brushwork</string>
+    <string name="shelf_picasso_title">Picasso</string>
+    <string name="shelf_picasso_subtitle">From the Blue Period to Cubism</string>
+    <string name="shelf_japanese_prints_title">Japanese prints</string>
+    <string name="shelf_japanese_prints_subtitle">Woodblock prints from Japan</string>
+
+    <string name="retry">Try again</string>
+    <string name="error_offline_title">You are offline</string>
+    <string name="error_offline_message">Check your connection and try again.</string>
+    <string name="error_rate_limited_title">Too many searches</string>
+    <string name="error_rate_limited_message">The museum asks for a short pause. Try again in a moment.</string>
+    <string name="error_not_found_title">Artwork not found</string>
+    <string name="error_not_found_message">This piece is no longer available.</string>
+    <string name="error_generic_title">Something went wrong</string>
+    <string name="error_generic_message">We could not load the collection. Please try again.</string>
+
+    <string name="detail_back">Back</string>
+    <string name="detail_view_full">View full artwork</string>
+    <string name="viewer_close">Close</string>
+    <string name="detail_loading">Loading the artwork</string>
+    <string name="detail_date">Date</string>
+    <string name="detail_medium">Medium</string>
+    <string name="detail_origin">Origin</string>
+    <string name="detail_dimensions">Dimensions</string>
+    <string name="detail_classification">Classification</string>
+    <string name="detail_style">Style</string>
+    <string name="detail_public_domain">Public domain</string>
+    <string name="detail_yes">Yes</string>
+    <string name="detail_no">No</string>
 </resources>
