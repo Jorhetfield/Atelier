@@ -39,6 +39,7 @@ android {
     // Kept in :app: in a library module the engine cannot resolve the R classes.
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all { it.useJUnitPlatform() }
         screenshotTests.create("screenshotTest") {
             engineVersion = libs.versions.screenshot.get()
             targetVariants.clear()
@@ -71,7 +72,15 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }
