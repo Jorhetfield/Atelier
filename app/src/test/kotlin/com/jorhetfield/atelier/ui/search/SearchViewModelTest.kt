@@ -1,0 +1,279 @@
+package com.jorhetfield.atelier.ui.search
+
+import com.jorhetfield.atelier.domain.error.ArtworkException
+import com.jorhetfield.atelier.domain.usecase.SearchArtworksUseCase
+import com.jorhetfield.atelier.mocks.FakeArtworkRepository
+import com.jorhetfield.atelier.mocks.MainDispatcherExtension
+import com.jorhetfield.atelier.mocks.artwork
+import com.jorhetfield.atelier.ui.model.ErrorKind
+import com.jorhetfield.atelier.ui.model.toUi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class SearchViewModelTest {
+    @JvmField
+    @RegisterExtension
+    val main = MainDispatcherExtension()
+
+    private val repository = FakeArtworkRepository()
+
+    // Lazy so it is built after the extension has installed the test Main dispatcher.
+    private val viewModel by lazy { SearchViewModel(SearchArtworksUseCase(repository)) }
+
+    private val debounce get() = SEARCH_DEBOUNCE_MS
+
+    private fun TestScope.recordStates(): List<SearchUiState> {
+        val seen = mutableListOf<SearchUiState>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect { seen += it } }
+        return seen
+    }
+
+    private fun List<SearchUiState>.contents() =
+        map { it.content }.fold(emptyList<SearchContent>()) { acc, content ->
+            if (acc.lastOrNull() == content) acc else acc + content
+        }
+
+    private fun TestScope.type(text: String) {
+        viewModel.onQueryChange(text)
+        advanceTimeBy(debounce)
+        runCurrent()
+    }
+
+    @Test
+    fun `starts idle with an empty query`() =
+        runTest {
+            assertEquals(SearchUiState(), recordStates().single())
+        }
+
+    @Test
+    fun `the field updates at once but the search waits for the debounce`() =
+        runTest {
+            repository.onSearch = { listOf(artwork(1)) }
+            val seen = recordStates()
+
+            viewModel.onQueryChange("monet")
+            runCurrent()
+            assertEquals("monet", seen.last().query)
+            assertEquals(SearchContent.Idle, seen.last().content)
+
+            advanceTimeBy(debounce - 1)
+            runCurrent()
+            assertTrue(repository.searches.isEmpty())
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(listOf("monet"), repository.searches)
+            assertEquals(SearchContent.Results(listOf(artwork(1).toUi())), seen.last().content)
+        }
+
+    @Test
+    fun `fast typing only searches for the final text`() =
+        runTest {
+            viewModel.onQueryChange("m")
+            advanceTimeBy(100)
+            viewModel.onQueryChange("mo")
+            advanceTimeBy(100)
+            viewModel.onQueryChange("mon")
+            advanceTimeBy(debounce)
+            runCurrent()
+
+            assertEquals(listOf("mon"), repository.searches)
+        }
+
+    @Test
+    fun `a blank query goes back to idle without searching`() =
+        runTest {
+            repository.onSearch = { listOf(artwork(1)) }
+            recordStates()
+            type("monet")
+
+            type("   ")
+
+            assertEquals(SearchContent.Idle, viewModel.uiState.value.content)
+            assertEquals(listOf("monet"), repository.searches)
+        }
+
+    @Test
+    fun `a slow search never overwrites a later one`() =
+        runTest {
+            var slowOneFinished = false
+            repository.onSearch = { term ->
+                if (term == "slow") {
+                    delay(1_000)
+                    slowOneFinished = true
+                    listOf(artwork(1, title = "From the slow search"))
+                } else {
+                    delay(100)
+                    listOf(artwork(2, title = "From the fast search"))
+                }
+            }
+            val seen = recordStates()
+
+            type("slow")
+            type("fast")
+            advanceTimeBy(5_000)
+            runCurrent()
+
+            assertEquals(
+                SearchContent.Results(listOf(artwork(2, title = "From the fast search").toUi())),
+                viewModel.uiState.value.content,
+            )
+            assertFalse(slowOneFinished)
+            val titlesEverShown =
+                seen
+                    .flatMap {
+                        (it.content as? SearchContent.Results)?.items.orEmpty()
+                    }.map { it.title }
+            assertFalse("From the slow search" in titlesEverShown)
+        }
+
+    @Test
+    fun `the search in flight is cancelled when a new term arrives`() =
+        runTest {
+            var cancelled = false
+            repository.onSearch = { term ->
+                if (term == "slow") {
+                    try {
+                        delay(1_000)
+                    } catch (e: CancellationException) {
+                        cancelled = true
+                        throw e
+                    }
+                }
+                emptyList()
+            }
+            recordStates()
+
+            type("slow")
+            assertFalse(cancelled)
+            type("fast")
+
+            assertTrue(cancelled)
+        }
+
+    @Test
+    fun `a search with no matches says so`() =
+        runTest {
+            repository.onSearch = { emptyList() }
+            recordStates()
+
+            type("qwertyuiop")
+
+            assertEquals(SearchContent.NoResults("qwertyuiop"), viewModel.uiState.value.content)
+        }
+
+    @Test
+    fun `no connection is reported as offline`() =
+        failureIsReportedAs(ArtworkException.NetworkUnavailable(), ErrorKind.Offline)
+
+    @Test
+    fun `rate limiting is reported as such`() =
+        failureIsReportedAs(ArtworkException.RateLimited(), ErrorKind.RateLimited)
+
+    @Test
+    fun `any other failure is generic`() = failureIsReportedAs(ArtworkException.ServerError(500), ErrorKind.Generic)
+
+    private fun failureIsReportedAs(
+        failure: ArtworkException,
+        expected: ErrorKind,
+    ) = runTest {
+        repository.onSearch = { throw failure }
+        recordStates()
+
+        type("monet")
+
+        assertEquals(SearchContent.Failure(expected), viewModel.uiState.value.content)
+    }
+
+    @Test
+    fun `previous results stay behind the loader but vanish when the new search fails`() =
+        runTest {
+            val first = listOf(artwork(1, title = "First"))
+            repository.onSearch = { term ->
+                delay(100)
+                if (term == "second") throw ArtworkException.ServerError(500) else first
+            }
+            val seen = recordStates()
+
+            type("first")
+            advanceTimeBy(100)
+            type("second")
+            advanceTimeBy(100)
+            runCurrent()
+
+            assertEquals(
+                listOf(
+                    SearchContent.Idle,
+                    SearchContent.Loading(),
+                    SearchContent.Results(first.map { it.toUi() }),
+                    SearchContent.Loading(previous = first.map { it.toUi() }),
+                    SearchContent.Failure(ErrorKind.Generic),
+                ),
+                seen.contents(),
+            )
+        }
+
+    @Test
+    fun `retrying runs the failed search again`() =
+        runTest {
+            var attempts = 0
+            repository.onSearch = {
+                if (attempts++ == 0) throw ArtworkException.NetworkUnavailable() else listOf(artwork(1))
+            }
+            recordStates()
+            type("monet")
+            assertEquals(SearchContent.Failure(ErrorKind.Offline), viewModel.uiState.value.content)
+
+            viewModel.retry()
+            runCurrent()
+
+            assertEquals(listOf("monet", "monet"), repository.searches)
+            assertEquals(SearchContent.Results(listOf(artwork(1).toUi())), viewModel.uiState.value.content)
+        }
+
+    @Test
+    fun `submitting searches at once and the debounce does not repeat it`() =
+        runTest {
+            repository.onSearch = { listOf(artwork(1)) }
+            recordStates()
+
+            viewModel.onQueryChange("monet")
+            viewModel.onSubmit()
+            runCurrent()
+            assertEquals(listOf("monet"), repository.searches)
+
+            advanceTimeBy(debounce)
+            runCurrent()
+            assertEquals(listOf("monet"), repository.searches)
+        }
+
+    @Test
+    fun `submitting after a failure retries it`() =
+        runTest {
+            var attempts = 0
+            repository.onSearch = {
+                if (attempts++ == 0) throw ArtworkException.RateLimited() else listOf(artwork(1))
+            }
+            recordStates()
+            type("monet")
+
+            viewModel.onSubmit()
+            runCurrent()
+
+            assertEquals(2, repository.searches.size)
+            assertTrue(viewModel.uiState.value.content is SearchContent.Results)
+        }
+}
