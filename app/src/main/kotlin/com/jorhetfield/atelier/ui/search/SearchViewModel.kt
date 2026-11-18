@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.jorhetfield.atelier.domain.error.ArtworkException
 import com.jorhetfield.atelier.domain.model.SearchPage
 import com.jorhetfield.atelier.domain.usecase.SearchArtworksUseCase
-import com.jorhetfield.atelier.ui.model.ArtworkUi
 import com.jorhetfield.atelier.ui.model.toErrorKind
 import com.jorhetfield.atelier.ui.model.toUi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -133,7 +132,7 @@ class SearchViewModel
                     emit(SearchContent.Idle)
                     return@flow
                 }
-                emit(SearchContent.Loading(previous = content.value.visibleItems()))
+                emit(SearchContent.Loading)
                 emit(
                     try {
                         val page = searchArtworks(term, FIRST_PAGE)
@@ -149,12 +148,5 @@ class SearchViewModel
                         SearchContent.Failure(e.toErrorKind())
                     },
                 )
-            }
-
-        private fun SearchContent.visibleItems(): List<ArtworkUi> =
-            when (this) {
-                is SearchContent.Results -> items
-                is SearchContent.Loading -> previous
-                else -> emptyList()
             }
     }

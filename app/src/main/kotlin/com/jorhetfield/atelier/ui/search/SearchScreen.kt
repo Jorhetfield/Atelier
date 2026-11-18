@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,14 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jorhetfield.atelier.R
@@ -139,12 +133,11 @@ fun SearchScreenContent(
                 onSubmit = onSubmit,
             )
 
-            // Only worth showing when there is a list to lay out.
+            // Only worth showing when there is a list to lay out. It stays through the loading of the next
+            // search, so the row does not jump out and back in between two searches.
             val content = state.content
             AnimatedVisibility(
-                visible =
-                    content is SearchContent.Results ||
-                        (content is SearchContent.Loading && content.previous.isNotEmpty()),
+                visible = content is SearchContent.Results || content is SearchContent.Loading,
                 enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
                 exit = shrinkVertically(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
             ) {
@@ -170,8 +163,8 @@ fun SearchScreenContent(
                         )
                     }
 
-                    is SearchContent.Loading -> {
-                        LoadingContent(content, layout, onArtworkClick)
+                    SearchContent.Loading -> {
+                        AtelierLoadingState(contentDescription = stringResource(R.string.search_loading))
                     }
 
                     is SearchContent.Results -> {
@@ -227,29 +220,6 @@ private fun SearchField(
             keyboard?.hide()
         },
     )
-}
-
-// The previous results are only decoration while loading: blurred, dimmed, hidden from
-// accessibility services and shielded from touches, so they can't be mistaken for current results.
-@Composable
-private fun LoadingContent(
-    content: SearchContent.Loading,
-    layout: ResultsLayout,
-    onArtworkClick: (Int) -> Unit,
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (content.previous.isNotEmpty()) {
-            ArtworkResults(
-                items = content.previous,
-                layout = layout,
-                onArtworkClick = onArtworkClick,
-                interactive = false,
-                modifier = Modifier.blur(16.dp).alpha(0.5f).clearAndSetSemantics {},
-            )
-            Box(modifier = Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { } })
-        }
-        AtelierLoadingState(contentDescription = stringResource(R.string.search_loading))
-    }
 }
 
 @Composable
