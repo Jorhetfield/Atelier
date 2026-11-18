@@ -15,9 +15,12 @@ import com.jorhetfield.atelier.ui.model.ArtworkDetailUi
 import com.jorhetfield.atelier.ui.model.ArtworkImageUi
 import com.jorhetfield.atelier.ui.model.ArtworkUi
 import com.jorhetfield.atelier.ui.model.ErrorKind
+import com.jorhetfield.atelier.ui.search.ResultsLayout
 import com.jorhetfield.atelier.ui.search.SearchContent
 import com.jorhetfield.atelier.ui.search.SearchScreenContent
 import com.jorhetfield.atelier.ui.search.SearchUiState
+import com.jorhetfield.atelier.ui.shelf.ShelfScreenContent
+import com.jorhetfield.atelier.ui.shelf.ShelfUiState
 
 private val titles =
     listOf(
@@ -84,6 +87,7 @@ private fun Search(
     content: SearchContent,
     query: String,
     home: HomeUiState = sampleHome,
+    layout: ResultsLayout = ResultsLayout.List,
 ) {
     AtelierTheme(dynamicColor = false) {
         SearchScreenContent(
@@ -93,7 +97,11 @@ private fun Search(
             onSubmit = {},
             onRetry = {},
             onHomeRetry = {},
+            onLoadMore = {},
             onArtworkClick = {},
+            onShelfClick = {},
+            layout = layout,
+            onLayoutChange = {},
         )
     }
 }
@@ -134,3 +142,44 @@ fun DetailScreenshot() = Detail(DetailUiState.Success(sampleDetail))
 @AtelierScreenPreviews
 @Composable
 fun DetailErrorScreenshot() = Detail(DetailUiState.Failure(ErrorKind.NotFound))
+
+@Composable
+private fun Shelf(
+    state: ShelfUiState,
+    layout: ResultsLayout = ResultsLayout.List,
+) {
+    AtelierTheme(dynamicColor = false) {
+        ShelfScreenContent(
+            title = "Monet",
+            subtitle = "Light, water and haystacks",
+            state = state,
+            onBack = {},
+            onArtworkClick = {},
+            layout = layout,
+            onLayoutChange = {},
+            onRetry = {},
+            onLoadMore = {},
+        )
+    }
+}
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfScreenshot() = Shelf(ShelfUiState.Content(sampleArtworks))
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfErrorScreenshot() = Shelf(ShelfUiState.Failure(ErrorKind.Offline))
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun SearchResultsGridScreenshot() =
+    Search(SearchContent.Results(sampleArtworks), query = "seurat", layout = ResultsLayout.Grid)
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfGridScreenshot() = Shelf(ShelfUiState.Content(sampleArtworks), layout = ResultsLayout.Grid)

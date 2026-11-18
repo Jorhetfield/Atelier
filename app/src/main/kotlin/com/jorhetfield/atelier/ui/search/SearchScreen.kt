@@ -1,10 +1,12 @@
 package com.jorhetfield.atelier.ui.search
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,17 +24,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jorhetfield.atelier.R
@@ -42,6 +43,7 @@ import com.jorhetfield.atelier.designsystem.component.AtelierLoadingState
 import com.jorhetfield.atelier.designsystem.component.AtelierSearchField
 import com.jorhetfield.atelier.designsystem.theme.AtelierTheme
 import com.jorhetfield.atelier.ui.home.HomeContent
+import com.jorhetfield.atelier.ui.home.HomeShelf
 import com.jorhetfield.atelier.ui.home.HomeUiState
 import com.jorhetfield.atelier.ui.home.HomeViewModel
 import com.jorhetfield.atelier.ui.model.messageRes
@@ -50,6 +52,9 @@ import com.jorhetfield.atelier.ui.model.titleRes
 @Composable
 fun SearchScreen(
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -63,7 +68,11 @@ fun SearchScreen(
         onSubmit = viewModel::onSubmit,
         onRetry = viewModel::retry,
         onHomeRetry = homeViewModel::retry,
+        onLoadMore = viewModel::loadMore,
         onArtworkClick = onArtworkClick,
+        onShelfClick = onShelfClick,
+        layout = layout,
+        onLayoutChange = onLayoutChange,
         modifier = modifier,
     )
 }
@@ -79,11 +88,23 @@ fun SearchScreenContent(
     onSubmit: () -> Unit,
     onRetry: () -> Unit,
     onHomeRetry: () -> Unit,
+    onLoadMore: () -> Unit,
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val motion = MaterialTheme.motionScheme
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    // The field owns its text. Reading it back through the view model's flows (combine, stateIn, collect)
+    // delays it by a frame or more, and when several characters arrive at once (paste, dictation, glide
+    // typing) the field repaints stale text and drops or reorders letters. The view model still gets every
+    // change; its query only seeds the field.
+    var query by rememberSaveable { mutableStateOf(state.query) }
+    // A recreated process restores the field's text but starts the view model empty.
+    LaunchedEffect(Unit) { if (query != state.query) onQueryChange(query) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -103,7 +124,25 @@ fun SearchScreenContent(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            SearchField(query = state.query, onQueryChange = onQueryChange, onSubmit = onSubmit)
+            SearchField(
+                query = query,
+                onQueryChange = {
+                    query = it
+                    onQueryChange(it)
+                },
+                onSubmit = onSubmit,
+            )
+
+            // Only worth showing when there is a list to lay out. It stays through the loading of the next
+            // search, so the row does not jump out and back in between two searches.
+            val content = state.content
+            AnimatedVisibility(
+                visible = content is SearchContent.Results || content is SearchContent.Loading,
+                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                exit = shrinkVertically(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
+            ) {
+                ResultsLayoutToggle(layout = layout, onLayoutChange = onLayoutChange)
+            }
 
             AnimatedContent(
                 targetState = state.content,
@@ -116,15 +155,26 @@ fun SearchScreenContent(
             ) { content ->
                 when (content) {
                     SearchContent.Idle -> {
-                        HomeContent(state = home, onArtworkClick = onArtworkClick, onRetry = onHomeRetry)
+                        HomeContent(
+                            state = home,
+                            onArtworkClick = onArtworkClick,
+                            onShelfClick = onShelfClick,
+                            onRetry = onHomeRetry,
+                        )
                     }
 
-                    is SearchContent.Loading -> {
-                        LoadingContent(content, onArtworkClick)
+                    SearchContent.Loading -> {
+                        AtelierLoadingState(contentDescription = stringResource(R.string.search_loading))
                     }
 
                     is SearchContent.Results -> {
-                        ResultsGrid(items = content.items, onArtworkClick = onArtworkClick)
+                        ArtworkResults(
+                            items = content.items,
+                            layout = layout,
+                            onArtworkClick = onArtworkClick,
+                            loadMore = content.loadMore,
+                            onLoadMore = onLoadMore,
+                        )
                     }
 
                     is SearchContent.NoResults -> {
@@ -170,27 +220,6 @@ private fun SearchField(
             keyboard?.hide()
         },
     )
-}
-
-// The previous results are only decoration while loading: blurred, dimmed, hidden from
-// accessibility services and shielded from touches, so they can't be mistaken for current results.
-@Composable
-private fun LoadingContent(
-    content: SearchContent.Loading,
-    onArtworkClick: (Int) -> Unit,
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (content.previous.isNotEmpty()) {
-            ResultsGrid(
-                items = content.previous,
-                onArtworkClick = onArtworkClick,
-                interactive = false,
-                modifier = Modifier.blur(16.dp).alpha(0.5f).clearAndSetSemantics {},
-            )
-            Box(modifier = Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { } })
-        }
-        AtelierLoadingState(contentDescription = stringResource(R.string.search_loading))
-    }
 }
 
 @Composable

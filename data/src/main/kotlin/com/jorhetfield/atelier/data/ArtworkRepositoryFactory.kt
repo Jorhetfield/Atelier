@@ -3,6 +3,7 @@ package com.jorhetfield.atelier.data
 import com.jorhetfield.atelier.data.cache.TtlCache
 import com.jorhetfield.atelier.data.remote.ArtworkApi
 import com.jorhetfield.atelier.domain.model.Artwork
+import com.jorhetfield.atelier.domain.model.SearchPage
 import com.jorhetfield.atelier.domain.repository.ArtworkRepository
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl
@@ -53,8 +54,8 @@ internal fun buildArtworkRepository(
 
     return ArtworkRepositoryImpl(
         api = api,
-        searchCache = TtlCache<String, List<Artwork>>(cacheTtl, timeSource),
+        searchCache = TtlCache<SearchKey, SearchPage>(cacheTtl, timeSource),
         artworkCache = TtlCache<Int, Artwork>(cacheTtl, timeSource),
-        highlightsCache = TtlCache<Unit, List<Artwork>>(cacheTtl, timeSource),
+        highlightsCache = TtlCache<Int, SearchPage>(cacheTtl, timeSource),
     )
 }

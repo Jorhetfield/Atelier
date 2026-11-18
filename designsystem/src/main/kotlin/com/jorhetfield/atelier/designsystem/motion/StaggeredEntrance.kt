@@ -5,6 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -13,18 +15,30 @@ import kotlinx.coroutines.delay
 
 // Lazy items leave and re-enter composition while scrolling; this remembers which ones already
 // played their entrance so they don't replay every time they come back into view.
-public class PlayedEntrances {
-    private val keys = HashSet<Any>()
+// Keys are kept as text so the set can be saved: the whole screen leaves composition while another
+// one is on top, and without saving it every card would animate in again on the way back.
+public class PlayedEntrances internal constructor(
+    played: Collection<String> = emptyList(),
+) {
+    private val keys = HashSet(played)
 
-    internal fun hasPlayed(key: Any): Boolean = key in keys
+    internal fun hasPlayed(key: Any): Boolean = key.toString() in keys
 
     internal fun markPlayed(key: Any) {
-        keys += key
+        keys += key.toString()
     }
+
+    internal fun snapshot(): List<String> = keys.toList()
 }
 
+private val PlayedEntrancesSaver =
+    listSaver<PlayedEntrances, String>(save = { it.snapshot() }, restore = { PlayedEntrances(it) })
+
 @Composable
-public fun rememberPlayedEntrances(): PlayedEntrances = remember { PlayedEntrances() }
+public fun rememberPlayedEntrances(): PlayedEntrances =
+    rememberSaveable(saver = PlayedEntrancesSaver) {
+        PlayedEntrances()
+    }
 
 private const val STAGGER_MILLIS = 45L
 private const val STAGGER_GROUP = 8

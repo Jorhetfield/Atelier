@@ -54,8 +54,8 @@ class HomeViewModel
 
         private suspend fun fetch(shelf: HomeShelf): List<Artwork> =
             when (val source = shelf.source) {
-                ShelfSource.Highlights -> getHighlights()
-                is ShelfSource.Search -> searchArtworks(source.query)
+                ShelfSource.Highlights -> getHighlights().artworks
+                is ShelfSource.Search -> searchArtworks(source.query).artworks
             }
 
         private fun update(

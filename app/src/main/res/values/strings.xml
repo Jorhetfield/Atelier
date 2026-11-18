@@ -6,6 +6,13 @@
     <string name="search_placeholder">Search artworks</string>
     <string name="search_clear">Clear search</string>
     <string name="search_loading">Searching the collection</string>
+    <string name="load_more_loading">Loading more artworks</string>
+    <string name="see_all">See all</string>
+    <string name="layout_list">List</string>
+    <string name="layout_grid">Grid</string>
+    <string name="shelf_empty_title">Nothing here right now</string>
+    <string name="shelf_empty_message">This collection came back empty. Try again in a moment.</string>
+    <string name="see_all_description">See all %1$s</string>
 
     <string name="idle_title">Discover the collection</string>
     <string name="idle_message">Search for an artist, a movement or a title to start exploring.</string>
