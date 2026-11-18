@@ -15,6 +15,7 @@ import com.jorhetfield.atelier.ui.model.ArtworkDetailUi
 import com.jorhetfield.atelier.ui.model.ArtworkImageUi
 import com.jorhetfield.atelier.ui.model.ArtworkUi
 import com.jorhetfield.atelier.ui.model.ErrorKind
+import com.jorhetfield.atelier.ui.search.ResultsLayout
 import com.jorhetfield.atelier.ui.search.SearchContent
 import com.jorhetfield.atelier.ui.search.SearchScreenContent
 import com.jorhetfield.atelier.ui.search.SearchUiState
@@ -86,6 +87,7 @@ private fun Search(
     content: SearchContent,
     query: String,
     home: HomeUiState = sampleHome,
+    layout: ResultsLayout = ResultsLayout.List,
 ) {
     AtelierTheme(dynamicColor = false) {
         SearchScreenContent(
@@ -98,6 +100,8 @@ private fun Search(
             onLoadMore = {},
             onArtworkClick = {},
             onShelfClick = {},
+            layout = layout,
+            onLayoutChange = {},
         )
     }
 }
@@ -140,7 +144,10 @@ fun DetailScreenshot() = Detail(DetailUiState.Success(sampleDetail))
 fun DetailErrorScreenshot() = Detail(DetailUiState.Failure(ErrorKind.NotFound))
 
 @Composable
-private fun Shelf(state: ShelfUiState) {
+private fun Shelf(
+    state: ShelfUiState,
+    layout: ResultsLayout = ResultsLayout.List,
+) {
     AtelierTheme(dynamicColor = false) {
         ShelfScreenContent(
             title = "Monet",
@@ -148,6 +155,8 @@ private fun Shelf(state: ShelfUiState) {
             state = state,
             onBack = {},
             onArtworkClick = {},
+            layout = layout,
+            onLayoutChange = {},
             onRetry = {},
             onLoadMore = {},
         )
@@ -163,3 +172,14 @@ fun ShelfScreenshot() = Shelf(ShelfUiState.Content(sampleArtworks))
 @AtelierScreenPreviews
 @Composable
 fun ShelfErrorScreenshot() = Shelf(ShelfUiState.Failure(ErrorKind.Offline))
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun SearchResultsGridScreenshot() =
+    Search(SearchContent.Results(sampleArtworks), query = "seurat", layout = ResultsLayout.Grid)
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfGridScreenshot() = Shelf(ShelfUiState.Content(sampleArtworks), layout = ResultsLayout.Grid)

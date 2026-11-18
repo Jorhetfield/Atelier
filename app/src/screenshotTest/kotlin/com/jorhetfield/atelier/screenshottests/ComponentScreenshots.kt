@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import com.android.tools.screenshot.PreviewTest
 import com.jorhetfield.atelier.designsystem.component.ArtworkCard
+import com.jorhetfield.atelier.designsystem.component.ArtworkListItem
 import com.jorhetfield.atelier.designsystem.component.AtelierDetailRow
 import com.jorhetfield.atelier.designsystem.component.AtelierEmptyState
 import com.jorhetfield.atelier.designsystem.component.AtelierErrorState
+import com.jorhetfield.atelier.designsystem.component.AtelierLayoutToggle
 import com.jorhetfield.atelier.designsystem.component.AtelierLoadMoreError
 import com.jorhetfield.atelier.designsystem.component.AtelierSearchField
 import com.jorhetfield.atelier.designsystem.preview.AtelierFontScalePreviews
@@ -112,5 +114,51 @@ fun LoadMoreErrorScreenshot() {
             retryLabel = "Try again",
             onRetry = {},
         )
+    }
+}
+
+@PreviewTest
+@AtelierPreviews
+@AtelierFontScalePreviews
+@Composable
+fun ArtworkListItemScreenshot() {
+    ScreenshotSurface {
+        Column(verticalArrangement = Arrangement.spacedBy(AtelierTheme.spacing.md)) {
+            ArtworkListItem(
+                title = "A Sunday on La Grande Jatte",
+                subtitle = "Georges Seurat",
+                onClick = {},
+                image = { SampleImage() },
+            )
+            ArtworkListItem(
+                title = "Self-Portrait with a Very Long Title That Needs to Wrap Over Two Lines",
+                subtitle = null,
+                onClick = {},
+                image = { SampleImage() },
+            )
+        }
+    }
+}
+
+@PreviewTest
+@AtelierPreviews
+@AtelierFontScalePreviews
+@Composable
+fun LayoutToggleScreenshot() {
+    ScreenshotSurface {
+        Column(verticalArrangement = Arrangement.spacedBy(AtelierTheme.spacing.md)) {
+            AtelierLayoutToggle(
+                gridSelected = false,
+                onGridSelectedChange = {},
+                listLabel = "List",
+                gridLabel = "Grid",
+            )
+            AtelierLayoutToggle(
+                gridSelected = true,
+                onGridSelectedChange = {},
+                listLabel = "List",
+                gridLabel = "Grid",
+            )
+        }
     }
 }

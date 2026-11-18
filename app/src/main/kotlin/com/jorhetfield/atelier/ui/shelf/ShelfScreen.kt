@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,13 +38,17 @@ import com.jorhetfield.atelier.designsystem.component.AtelierLoadingState
 import com.jorhetfield.atelier.ui.home.HomeShelf
 import com.jorhetfield.atelier.ui.model.messageRes
 import com.jorhetfield.atelier.ui.model.titleRes
-import com.jorhetfield.atelier.ui.search.ResultsGrid
+import com.jorhetfield.atelier.ui.search.ArtworkResults
+import com.jorhetfield.atelier.ui.search.ResultsLayout
+import com.jorhetfield.atelier.ui.search.ResultsLayoutToggle
 
 @Composable
 fun ShelfScreen(
     shelf: HomeShelf,
     onBack: () -> Unit,
     onArtworkClick: (Int) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ShelfViewModel =
         hiltViewModel<ShelfViewModel, ShelfViewModel.Factory>(
@@ -57,6 +62,8 @@ fun ShelfScreen(
         state = state,
         onBack = onBack,
         onArtworkClick = onArtworkClick,
+        layout = layout,
+        onLayoutChange = onLayoutChange,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         modifier = modifier,
@@ -72,6 +79,8 @@ fun ShelfScreenContent(
     state: ShelfUiState,
     onBack: () -> Unit,
     onArtworkClick: (Int) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
@@ -137,12 +146,17 @@ fun ShelfScreenContent(
                 }
 
                 is ShelfUiState.Content -> {
-                    ResultsGrid(
-                        items = current.items,
-                        onArtworkClick = onArtworkClick,
-                        loadMore = current.loadMore,
-                        onLoadMore = onLoadMore,
-                    )
+                    Column {
+                        ResultsLayoutToggle(layout = layout, onLayoutChange = onLayoutChange)
+                        ArtworkResults(
+                            items = current.items,
+                            layout = layout,
+                            onArtworkClick = onArtworkClick,
+                            modifier = Modifier.weight(1f),
+                            loadMore = current.loadMore,
+                            onLoadMore = onLoadMore,
+                        )
+                    }
                 }
             }
         }
