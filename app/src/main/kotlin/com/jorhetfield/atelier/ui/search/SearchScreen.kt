@@ -25,7 +25,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -100,6 +104,14 @@ fun SearchScreenContent(
     val motion = MaterialTheme.motionScheme
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    // The field owns its text. Reading it back through the view model's flows (combine, stateIn, collect)
+    // delays it by a frame or more, and when several characters arrive at once (paste, dictation, glide
+    // typing) the field repaints stale text and drops or reorders letters. The view model still gets every
+    // change; its query only seeds the field.
+    var query by rememberSaveable { mutableStateOf(state.query) }
+    // A recreated process restores the field's text but starts the view model empty.
+    LaunchedEffect(Unit) { if (query != state.query) onQueryChange(query) }
+
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
@@ -118,7 +130,14 @@ fun SearchScreenContent(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            SearchField(query = state.query, onQueryChange = onQueryChange, onSubmit = onSubmit)
+            SearchField(
+                query = query,
+                onQueryChange = {
+                    query = it
+                    onQueryChange(it)
+                },
+                onSubmit = onSubmit,
+            )
 
             // Only worth showing when there is a list to lay out.
             val content = state.content
