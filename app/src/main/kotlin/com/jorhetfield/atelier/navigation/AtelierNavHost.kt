@@ -5,12 +5,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.metadata
@@ -20,6 +24,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.jorhetfield.atelier.ui.detail.DetailScreen
 import com.jorhetfield.atelier.ui.model.ArtworkImageUi
 import com.jorhetfield.atelier.ui.search.SearchScreen
+import com.jorhetfield.atelier.ui.shelf.ShelfScreen
 import com.jorhetfield.atelier.ui.viewer.ArtworkViewerScreen
 
 @Composable
@@ -36,6 +41,22 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
             fadeOut(motion.defaultEffectsSpec(), targetAlpha = 0.5f)
     val sink =
         (EnterTransition.None togetherWith slideOutVertically(motion.defaultSpatialSpec()) { it }).apply {
+            targetContentZIndex = -1f
+        }
+
+    // A shelf's full list slides in from the end edge, like the next page of the same book. Opaque for the
+    // same reason as the detail sheet, and mirrored for right-to-left languages.
+    val towardsEnd = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+    val slideIn =
+        slideInHorizontally(motion.defaultSpatialSpec()) { it * towardsEnd } togetherWith
+            fadeOut(motion.defaultEffectsSpec(), targetAlpha = 0.5f)
+    val slideOut =
+        (
+            EnterTransition.None togetherWith
+                slideOutHorizontally(
+                    motion.defaultSpatialSpec(),
+                ) { it * towardsEnd }
+        ).apply {
             targetContentZIndex = -1f
         }
 
@@ -72,6 +93,25 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
                         // A double tap must not stack two detail screens.
                         onArtworkClick = { id ->
                             if (backStack.lastOrNull() is SearchRoute) backStack.add(DetailRoute(id))
+                        },
+                        onShelfClick = { shelf ->
+                            if (backStack.lastOrNull() is SearchRoute) backStack.add(ShelfRoute(shelf))
+                        },
+                    )
+                }
+                entry<ShelfRoute>(
+                    metadata =
+                        metadata {
+                            put(NavDisplay.TransitionKey) { slideIn }
+                            put(NavDisplay.PopTransitionKey) { slideOut }
+                            put(NavDisplay.PredictivePopTransitionKey) { slideOut }
+                        },
+                ) { key ->
+                    ShelfScreen(
+                        shelf = key.shelf,
+                        onBack = { backStack.removeLastOrNull() },
+                        onArtworkClick = { id ->
+                            if (backStack.lastOrNull() is ShelfRoute) backStack.add(DetailRoute(id))
                         },
                     )
                 }

@@ -65,7 +65,7 @@ Endpoints used:
 |---|---|
 | Search | `GET /artworks/search?q=<query>&page=<p>&limit=<n>&fields=...` |
 | Detail | `GET /artworks/{id}` |
-| Museum highlights (Home) | `GET /artworks/search?query[term][is_boosted]=true&sort[boost_rank]=asc&limit=12` |
+| Museum highlights (Home) | `GET /artworks/search?query[term][is_boosted]=true&sort[boost_rank]=asc&limit=12&page=<p>` |
 | Images | IIIF: `https://www.artic.edu/iiif/2/{image_id}/full/{width},/0/default.jpg` |
 
 ### Quirks I found by probing it (and how the app deals with them)
@@ -79,7 +79,7 @@ Endpoints used:
 | Relevant results run out long before the paging does: for `monet` the matches are gone by page 5, while `total_pages` still says 6,665 | A page ends the list when it comes back short or with noise at its tail, because results arrive ranked and the noise always follows the matches |
 | Paging past 1,000 results (page 50 at 20 per page) answers 403 | The repository never asks beyond page 50 and reports that page as the last |
 | An empty `q` returns everything | The use case short-circuits blank queries without touching the network |
-| Highlights responses carry no `_score` | The highlights mapper deliberately skips the relevance filter |
+| Highlights responses carry no `_score` | The highlights mapper deliberately skips the relevance filter, and a highlights page is the last one when it is not full (36 pages of 12, the last with 6) |
 | Several fields (`image_id`, `artist_display`, ...) can be null | The mapper is defensive; an artwork without a picture is still a valid item |
 | The image server never upscales | Requests are clamped to the original width (`thumbnail.width`), see `ArtworkImageUi.url` |
 | `Accept-Language` and `?lang=` are ignored | Data is English only, so the UI is English only too |
@@ -180,7 +180,7 @@ There are three small caches behind the one repository:
 |---|---|---|
 | Search | normalized query **and page** | search results, one entry per page |
 | Artwork by id | id | search results and highlights, so opening an item from a list needs no extra request |
-| Highlights | none | the highlights request |
+| Highlights | page | the highlights request, one entry per page |
 
 A detail screen therefore usually opens instantly from cache. If it does not (a direct id, or an expired entry), `getArtwork(id)` falls back to `/artworks/{id}`.
 
@@ -212,13 +212,13 @@ query (StateFlow)
 
 ## 7. Testing
 
-**110 unit tests** across the three logic layers, plus **46 screenshot references**.
+**130 unit tests** across the three logic layers, plus **54 screenshot references**.
 
 | Layer | Tests | Approach |
 |---|---|---|
-| `:domain` | 12 | Use cases against a **mocked** `ArtworkRepository` (MockK), as the brief asks. Includes "failures reach the caller unchanged" and "cancellation is not swallowed" |
-| `:data` | 39 | `MockWebServer` plus a fake clock. Cache hit makes no request, expiry refetches, the TTL boundary, different queries cached separately, query normalization, errors not cached, empty results cached, detail from cache or network, error mapping, cancellation, mapper, highlights, paging (per-page cache and expiry, end-of-results rules, the 50-page cap) |
-| `:app` | 59 | ViewModels with a fake repository, a test main dispatcher, `runTest` and Turbine. Includes the ordering test (slow A never overwrites B), the paging tests (stale page never lands, page cancelled by a new search, no double request), the detail loading rules, debounce, retry, Home shelves failing independently, and the pure zoom math |
+| `:domain` | 14 | Use cases against a **mocked** `ArtworkRepository` (MockK), as the brief asks. Includes "failures reach the caller unchanged" and "cancellation is not swallowed" |
+| `:data` | 43 | `MockWebServer` plus a fake clock. Cache hit makes no request, expiry refetches, the TTL boundary, different queries cached separately, query normalization, errors not cached, empty results cached, detail from cache or network, error mapping, cancellation, mapper, highlights, paging (per-page cache and expiry, end-of-results rules, the 50-page cap) |
+| `:app` | 73 | ViewModels with a fake repository, a test main dispatcher, `runTest` and Turbine. Includes the ordering test (slow A never overwrites B), the paging tests (stale page never lands, page cancelled by a new search, no double request), the shelf screen (search and highlights sources, paging, failures), the detail loading rules, debounce, retry, Home shelves failing independently, and the pure zoom math |
 
 JUnit 5 is used for all unit tests. I checked that the tests can actually fail by temporarily breaking the code (removing expiry, caching errors, replacing `flatMapLatest` with `flatMapMerge`, ignoring the pinch centroid, and so on) and confirming a test went red each time.
 
@@ -251,6 +251,7 @@ The idle state of the search screen is a Home made of shelves: museum highlights
 - Highlights use the museum's own editorial ranking (`is_boosted` and `boost_rank`), so the first shelf is genuinely "the most important works", not a random search.
 - Each shelf loads independently. A failed or empty shelf hides itself; only if **all** fail does the screen show an error with retry, and retry reloads only what failed.
 - Artworks without a picture are dropped from the Home.
+- **See all.** Every loaded shelf has a "See all" action that opens the full list behind it (`ShelfScreen`), with the same infinite scroll as the search. A search shelf pages through its own search, and the highlights shelf through the paged highlights call. The first page is the one the Home has just fetched, so it opens straight from the cache with no loader. Its view model is simpler than the search one: it has a single source for its whole life, so there is no term to guard against, and leaving the screen cancels whatever is in flight with the view model.
 - Artist shelves beat concept shelves: searching "impressionism" returned mostly American paintings, while artist names are precise.
 
 ### Dominant-color tint

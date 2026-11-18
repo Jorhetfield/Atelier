@@ -11,9 +11,12 @@ class FakeArtworkRepository : ArtworkRepository {
         { query, _ -> SearchPage(onSearch(query), hasMore = false) }
     var onGetArtwork: suspend (Int) -> Artwork = { error("getArtwork was not stubbed") }
     var onGetHighlights: suspend () -> List<Artwork> = { emptyList() }
+    var onGetHighlightsPage: suspend (page: Int) -> SearchPage =
+        { SearchPage(onGetHighlights(), hasMore = false) }
 
     val searchRequests = mutableListOf<Pair<String, Int>>()
     val searches: List<String> get() = searchRequests.map { it.first }
+    val highlightsPages = mutableListOf<Int>()
     var highlightsCalls = 0
         private set
 
@@ -27,8 +30,9 @@ class FakeArtworkRepository : ArtworkRepository {
 
     override suspend fun getArtwork(id: Int): Artwork = onGetArtwork(id)
 
-    override suspend fun getHighlights(): List<Artwork> {
+    override suspend fun getHighlights(page: Int): SearchPage {
         highlightsCalls++
-        return onGetHighlights()
+        highlightsPages += page
+        return onGetHighlightsPage(page)
     }
 }

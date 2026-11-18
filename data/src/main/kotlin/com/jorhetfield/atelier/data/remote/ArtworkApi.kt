@@ -28,6 +28,7 @@ internal interface ArtworkApi {
     suspend fun highlights(
         @Query("query[term][is_boosted]") boosted: Boolean = true,
         @Query("sort[boost_rank]") sort: String = "asc",
+        @Query("page") page: Int,
         @Query("limit") limit: Int = HIGHLIGHTS_SIZE,
         @Query("fields") fields: String = FIELDS,
     ): SearchResponseDto

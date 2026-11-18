@@ -42,6 +42,7 @@ private const val PLACEHOLDER_COUNT = 4
 fun HomeContent(
     state: HomeUiState,
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -70,7 +71,12 @@ fun HomeContent(
         }
 
         else -> {
-            Shelves(shelves = shelves, onArtworkClick = onArtworkClick, modifier = modifier)
+            Shelves(
+                shelves = shelves,
+                onArtworkClick = onArtworkClick,
+                onShelfClick = onShelfClick,
+                modifier = modifier,
+            )
         }
     }
 }
@@ -79,6 +85,7 @@ fun HomeContent(
 private fun Shelves(
     shelves: List<ShelfUi>,
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = AtelierTheme.spacing
@@ -92,9 +99,14 @@ private fun Shelves(
     ) {
         itemsIndexed(shelves, key = { _, shelf -> shelf.shelf }) { index, shelf ->
             Column(modifier = Modifier.staggeredEntrance(key = shelf.shelf, index = index, played = played)) {
+                val title = stringResource(shelf.shelf.title)
                 AtelierSectionHeader(
-                    title = stringResource(shelf.shelf.title),
+                    title = title,
                     subtitle = stringResource(shelf.shelf.subtitle),
+                    // Only a shelf that has loaded has anything to open.
+                    actionLabel = stringResource(R.string.see_all).takeIf { shelf.content is ShelfContent.Loaded },
+                    actionContentDescription = stringResource(R.string.see_all_description, title),
+                    onAction = { onShelfClick(shelf.shelf) },
                 )
                 Spacer(modifier = Modifier.height(spacing.md))
                 ShelfCarousel(content = shelf.content, onArtworkClick = onArtworkClick)
