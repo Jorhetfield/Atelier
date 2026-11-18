@@ -28,7 +28,7 @@ class ArtworkRepositoryErrorsTest {
         runTest {
             fixture.enqueue("{}", code = 429)
 
-            assertThrows<ArtworkException.RateLimited> { repository.search("monet") }
+            assertThrows<ArtworkException.RateLimited> { repository.search("monet", 1) }
         }
 
     @Test
@@ -36,7 +36,7 @@ class ArtworkRepositoryErrorsTest {
         runTest {
             fixture.enqueue("""{"status":403,"error":"Invalid limit","detail":"Set a smaller limit."}""", code = 403)
 
-            val error = assertThrows<ArtworkException.ServerError> { repository.search("monet") }
+            val error = assertThrows<ArtworkException.ServerError> { repository.search("monet", 1) }
 
             assertEquals(403, error.code)
             assertEquals("Set a smaller limit.", error.message)
@@ -47,7 +47,7 @@ class ArtworkRepositoryErrorsTest {
         runTest {
             fixture.enqueue("this is not json")
 
-            assertThrows<ArtworkException.ServerError> { repository.search("monet") }
+            assertThrows<ArtworkException.ServerError> { repository.search("monet", 1) }
         }
 
     @Test
@@ -55,6 +55,6 @@ class ArtworkRepositoryErrorsTest {
         runTest {
             fixture.server.close()
 
-            assertThrows<ArtworkException.NetworkUnavailable> { repository.search("monet") }
+            assertThrows<ArtworkException.NetworkUnavailable> { repository.search("monet", 1) }
         }
 }

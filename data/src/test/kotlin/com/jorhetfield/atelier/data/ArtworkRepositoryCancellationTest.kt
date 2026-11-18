@@ -37,7 +37,7 @@ class ArtworkRepositoryCancellationTest {
                     .build(),
             )
 
-            val inFlight = launch { repository.search("monet") }
+            val inFlight = launch { repository.search("monet", 1) }
             runCurrent()
             val reachedServer = withContext(Dispatchers.IO) { fixture.server.takeRequest(5, TimeUnit.SECONDS) }
             assertNotNull(reachedServer)
@@ -46,9 +46,9 @@ class ArtworkRepositoryCancellationTest {
             assertTrue(inFlight.isCancelled)
 
             fixture.enqueue(searchJson(artworkJson(2, title = "Fresh")))
-            val result = repository.search("monet")
+            val result = repository.search("monet", 1)
 
-            assertEquals("Fresh", result.single().title)
+            assertEquals("Fresh", result.artworks.single().title)
             assertEquals(2, fixture.server.requestCount)
         }
 }

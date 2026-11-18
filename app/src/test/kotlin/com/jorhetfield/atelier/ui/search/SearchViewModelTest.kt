@@ -1,6 +1,7 @@
 package com.jorhetfield.atelier.ui.search
 
 import com.jorhetfield.atelier.domain.error.ArtworkException
+import com.jorhetfield.atelier.domain.model.SearchPage
 import com.jorhetfield.atelier.domain.usecase.SearchArtworksUseCase
 import com.jorhetfield.atelier.mocks.FakeArtworkRepository
 import com.jorhetfield.atelier.mocks.MainDispatcherExtension
@@ -8,7 +9,9 @@ import com.jorhetfield.atelier.mocks.artwork
 import com.jorhetfield.atelier.ui.model.ErrorKind
 import com.jorhetfield.atelier.ui.model.toUi
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -275,5 +278,199 @@ class SearchViewModelTest {
 
             assertEquals(2, repository.searches.size)
             assertTrue(viewModel.uiState.value.content is SearchContent.Results)
+        }
+
+    // --- paging ---
+
+    private fun page(
+        vararg ids: Int,
+        hasMore: Boolean,
+    ) = SearchPage(ids.map { artwork(it) }, hasMore)
+
+    private fun TestScope.loadMore() {
+        viewModel.loadMore()
+        runCurrent()
+    }
+
+    private val results get() = viewModel.uiState.value.content as SearchContent.Results
+
+    @Test
+    fun `a first page that has a successor offers to load more`() =
+        runTest {
+            repository.onSearchPage = { _, _ -> page(1, 2, hasMore = true) }
+            recordStates()
+
+            type("monet")
+
+            assertEquals(LoadMore.Available, results.loadMore)
+        }
+
+    @Test
+    fun `a last page offers nothing more`() =
+        runTest {
+            repository.onSearchPage = { _, _ -> page(1, 2, hasMore = false) }
+            recordStates()
+
+            type("monet")
+            loadMore()
+
+            assertEquals(LoadMore.Done, results.loadMore)
+            assertEquals(listOf("monet" to 1), repository.searchRequests)
+        }
+
+    @Test
+    fun `loading more adds the next page below the ones already shown`() =
+        runTest {
+            repository.onSearchPage = { _, page ->
+                when (page) {
+                    1 -> page(1, 2, hasMore = true)
+                    2 -> page(3, 4, hasMore = true)
+                    else -> page(5, hasMore = false)
+                }
+            }
+            recordStates()
+            type("monet")
+
+            loadMore()
+            assertEquals(listOf(1, 2, 3, 4), results.items.map { it.id })
+            assertEquals(LoadMore.Available, results.loadMore)
+
+            loadMore()
+            assertEquals(listOf(1, 2, 3, 4, 5), results.items.map { it.id })
+            assertEquals(LoadMore.Done, results.loadMore)
+            assertEquals(listOf("monet" to 1, "monet" to 2, "monet" to 3), repository.searchRequests)
+        }
+
+    @Test
+    fun `a page is not requested twice while it is on its way`() =
+        runTest {
+            val answer = CompletableDeferred<SearchPage>()
+            repository.onSearchPage = { _, page -> if (page == 1) page(1, hasMore = true) else answer.await() }
+            recordStates()
+            type("monet")
+
+            loadMore()
+            assertEquals(LoadMore.Loading, results.loadMore)
+            loadMore()
+            loadMore()
+
+            assertEquals(2, repository.searchRequests.size)
+            answer.complete(page(2, hasMore = false))
+            runCurrent()
+            assertEquals(listOf(1, 2), results.items.map { it.id })
+        }
+
+    @Test
+    fun `a failed page keeps what is shown and a retry asks for the same page`() =
+        runTest {
+            var attempts = 0
+            repository.onSearchPage = { _, page ->
+                when {
+                    page == 1 -> page(1, hasMore = true)
+                    attempts++ == 0 -> throw ArtworkException.NetworkUnavailable()
+                    else -> page(2, hasMore = false)
+                }
+            }
+            recordStates()
+            type("monet")
+
+            loadMore()
+            assertEquals(listOf(1), results.items.map { it.id })
+            assertEquals(LoadMore.Failed(ErrorKind.Offline), results.loadMore)
+
+            loadMore()
+            assertEquals(listOf(1, 2), results.items.map { it.id })
+            assertEquals(listOf("monet" to 1, "monet" to 2, "monet" to 2), repository.searchRequests)
+        }
+
+    @Test
+    fun `an artwork that shows up on two pages is listed once`() =
+        runTest {
+            repository.onSearchPage = { _, page ->
+                if (page == 1) page(1, 2, hasMore = true) else page(2, 3, hasMore = false)
+            }
+            recordStates()
+            type("monet")
+
+            loadMore()
+
+            assertEquals(listOf(1, 2, 3), results.items.map { it.id })
+        }
+
+    @Test
+    fun `a slow page of an earlier search never lands in a newer one`() =
+        runTest {
+            val slowPage = CompletableDeferred<SearchPage>()
+            repository.onSearchPage = { term, page ->
+                when {
+                    term == "monet" && page == 1 -> page(1, hasMore = true)
+                    term == "monet" -> slowPage.await()
+                    else -> page(100, hasMore = false)
+                }
+            }
+            val seen = recordStates()
+            type("monet")
+            loadMore()
+
+            type("picasso")
+            slowPage.complete(page(2, hasMore = false))
+            runCurrent()
+
+            assertEquals(SearchContent.Results(listOf(artwork(100).toUi())), viewModel.uiState.value.content)
+            val everShown = seen.flatMap { (it.content as? SearchContent.Results)?.items.orEmpty() }.map { it.id }
+            assertFalse(2 in everShown)
+        }
+
+    @Test
+    fun `the page in flight is cancelled when a new search begins`() =
+        runTest {
+            var cancelled = false
+            repository.onSearchPage = { term, page ->
+                if (term == "monet" && page == 2) {
+                    try {
+                        awaitCancellation()
+                    } catch (e: CancellationException) {
+                        cancelled = true
+                        throw e
+                    }
+                }
+                page(1, hasMore = term == "monet")
+            }
+            recordStates()
+            type("monet")
+            loadMore()
+            assertFalse(cancelled)
+
+            type("picasso")
+
+            assertTrue(cancelled)
+        }
+
+    @Test
+    fun `a new search starts again from the first page`() =
+        runTest {
+            repository.onSearchPage = { _, page -> page(page, hasMore = true) }
+            recordStates()
+            type("monet")
+            loadMore()
+            loadMore()
+
+            type("picasso")
+            loadMore()
+
+            assertEquals(
+                listOf("monet" to 1, "monet" to 2, "monet" to 3, "picasso" to 1, "picasso" to 2),
+                repository.searchRequests,
+            )
+        }
+
+    @Test
+    fun `asking for more with no results on screen does nothing`() =
+        runTest {
+            recordStates()
+
+            loadMore()
+
+            assertTrue(repository.searchRequests.isEmpty())
         }
 }

@@ -63,7 +63,7 @@ Endpoints used:
 
 | Purpose | Request |
 |---|---|
-| Search | `GET /artworks/search?q=<query>&limit=<n>&fields=...` |
+| Search | `GET /artworks/search?q=<query>&page=<p>&limit=<n>&fields=...` |
 | Detail | `GET /artworks/{id}` |
 | Museum highlights (Home) | `GET /artworks/search?query[term][is_boosted]=true&sort[boost_rank]=asc&limit=12` |
 | Images | IIIF: `https://www.artic.edu/iiif/2/{image_id}/full/{width},/0/default.jpg` |
@@ -76,6 +76,8 @@ Endpoints used:
 | `Cache-Control: no-cache, private` on every response | HTTP caching is useless, so the app needs its own cache |
 | `total` is 133,287 for any query, including gibberish | The count cannot tell "no results" apart from results |
 | Gibberish still returns 200 with junk, but with a `_score` around 0.00002; real matches score 8 or more | The mapper drops results with `_score` below 0.01. That is the only reliable "no results" signal |
+| Relevant results run out long before the paging does: for `monet` the matches are gone by page 5, while `total_pages` still says 6,665 | A page ends the list when it comes back short or with noise at its tail, because results arrive ranked and the noise always follows the matches |
+| Paging past 1,000 results (page 50 at 20 per page) answers 403 | The repository never asks beyond page 50 and reports that page as the last |
 | An empty `q` returns everything | The use case short-circuits blank queries without touching the network |
 | Highlights responses carry no `_score` | The highlights mapper deliberately skips the relevance filter |
 | Several fields (`image_id`, `artist_display`, ...) can be null | The mapper is defensive; an artwork without a picture is still a valid item |
@@ -170,12 +172,13 @@ Implemented in `data/.../cache/TtlCache.kt` and used by `ArtworkRepositoryImpl`.
 - **Injectable clock**: `kotlin.time.TimeSource`. Tests use `TestTimeSource` and move time forward manually, so there are no real delays.
 - **Thread safety**: a `Mutex` guards the map. The lock is **never held during the network call**, otherwise one slow request would block every other lookup.
 - **Failures are never cached**, and neither is cancellation.
+- **Paging**: every page of a query is its own entry, so scrolling back never repeats a request and each page expires on its own clock.
 
 There are three small caches behind the one repository:
 
 | Cache | Key | Fed by |
 |---|---|---|
-| Search | normalized query | search results |
+| Search | normalized query **and page** | search results, one entry per page |
 | Artwork by id | id | search results and highlights, so opening an item from a list needs no extra request |
 | Highlights | none | the highlights request |
 
@@ -202,19 +205,20 @@ query (StateFlow)
 - `CancellationException` is rethrown first in the error translation, before any other `catch`. It is never turned into an error state.
 - Pressing the keyboard's search action or retry bypasses the debounce through a `Channel(CONFLATED)`, so those events are never lost and never duplicated.
 - **The state always reflects the current query.** A failed or empty search never shows older results, which is the strict reading of the brief. The one exception is purely visual: while a *new* search is loading, the previous results appear blurred and inert behind the loading indicator (`SearchContent.Loading(previous)`). They are not clickable and are hidden from accessibility, and they vanish on failure or no results.
+- **Paging follows the same rule.** `loadMore()` runs as its own job, which is cancelled the moment a new search begins, and a page only lands if the term it was requested for is still the one on screen. Two tests prove each half: the in-flight page is cancelled, and a slow page of an earlier search never appears in a newer one. A page that is already on its way is never requested twice, a failed page keeps what is shown and offers a retry for the same page, and an artwork that shifts between pages is listed once because the grid is keyed by id.
 - On the Home, each shelf loads in its own coroutine, so a slow or failing shelf never blocks the others.
 
 ---
 
 ## 7. Testing
 
-**84 unit tests** across the three logic layers, plus **42 screenshot references**.
+**110 unit tests** across the three logic layers, plus **46 screenshot references**.
 
 | Layer | Tests | Approach |
 |---|---|---|
-| `:domain` | 10 | Use cases against a **mocked** `ArtworkRepository` (MockK), as the brief asks. Includes "failures reach the caller unchanged" and "cancellation is not swallowed" |
-| `:data` | 28 | `MockWebServer` plus a fake clock. Cache hit makes no request, expiry refetches, the TTL boundary, different queries cached separately, query normalization, errors not cached, empty results cached, detail from cache or network, error mapping, cancellation, mapper, highlights |
-| `:app` | 46 | ViewModels with a fake repository, a test main dispatcher, `runTest` and Turbine. Includes the ordering test (slow A never overwrites B), debounce, retry, Home shelves failing independently, and the pure zoom math |
+| `:domain` | 12 | Use cases against a **mocked** `ArtworkRepository` (MockK), as the brief asks. Includes "failures reach the caller unchanged" and "cancellation is not swallowed" |
+| `:data` | 39 | `MockWebServer` plus a fake clock. Cache hit makes no request, expiry refetches, the TTL boundary, different queries cached separately, query normalization, errors not cached, empty results cached, detail from cache or network, error mapping, cancellation, mapper, highlights, paging (per-page cache and expiry, end-of-results rules, the 50-page cap) |
+| `:app` | 59 | ViewModels with a fake repository, a test main dispatcher, `runTest` and Turbine. Includes the ordering test (slow A never overwrites B), the paging tests (stale page never lands, page cancelled by a new search, no double request), the detail loading rules, debounce, retry, Home shelves failing independently, and the pure zoom math |
 
 JUnit 5 is used for all unit tests. I checked that the tests can actually fail by temporarily breaking the code (removing expiry, caching errors, replacing `flatMapLatest` with `flatMapMerge`, ignoring the pinch centroid, and so on) and confirming a test went red each time.
 
@@ -281,7 +285,7 @@ GitHub Actions on every push and pull request: Spotless and all unit tests. Git 
 
 ## 9. Known limitations and what I would do next
 
-- **No pagination.** Search uses a fixed `limit`. Paging is the first thing I would add, with the page number as part of the cache key.
+- **Paging stops at 1,000 results**, because that is all the API exposes for a query. In practice the relevant results of most queries end much sooner.
 - **No sharing of identical in-flight requests**, deliberately (see [section 5](#5-cache)). A shared deferred with reference counting would remove the duplicates without coupling cancellation.
 - **English only**, because the API returns English only.
 - **Deep zoom** uses a single large image, not IIIF tiles. Tiles would give real detail at 5x for large paintings.

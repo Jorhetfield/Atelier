@@ -8,6 +8,7 @@ import com.jorhetfield.atelier.designsystem.component.ArtworkCard
 import com.jorhetfield.atelier.designsystem.component.AtelierDetailRow
 import com.jorhetfield.atelier.designsystem.component.AtelierEmptyState
 import com.jorhetfield.atelier.designsystem.component.AtelierErrorState
+import com.jorhetfield.atelier.designsystem.component.AtelierLoadMoreError
 import com.jorhetfield.atelier.designsystem.component.AtelierSearchField
 import com.jorhetfield.atelier.designsystem.preview.AtelierFontScalePreviews
 import com.jorhetfield.atelier.designsystem.preview.AtelierPreviews
@@ -96,5 +97,20 @@ fun DetailRowsScreenshot() {
             AtelierDetailRow(label = "Medium", value = "Oil on canvas")
             AtelierDetailRow(label = "Origin", value = "France")
         }
+    }
+}
+
+// The loading indicator animates, so only the failed footer has a reference picture.
+@PreviewTest
+@AtelierPreviews
+@AtelierFontScalePreviews
+@Composable
+fun LoadMoreErrorScreenshot() {
+    ScreenshotSurface {
+        AtelierLoadMoreError(
+            message = "Check your connection and try again.",
+            retryLabel = "Try again",
+            onRetry = {},
+        )
     }
 }

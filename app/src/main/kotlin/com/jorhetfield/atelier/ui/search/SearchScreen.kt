@@ -63,6 +63,7 @@ fun SearchScreen(
         onSubmit = viewModel::onSubmit,
         onRetry = viewModel::retry,
         onHomeRetry = homeViewModel::retry,
+        onLoadMore = viewModel::loadMore,
         onArtworkClick = onArtworkClick,
         modifier = modifier,
     )
@@ -79,6 +80,7 @@ fun SearchScreenContent(
     onSubmit: () -> Unit,
     onRetry: () -> Unit,
     onHomeRetry: () -> Unit,
+    onLoadMore: () -> Unit,
     onArtworkClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -124,7 +126,12 @@ fun SearchScreenContent(
                     }
 
                     is SearchContent.Results -> {
-                        ResultsGrid(items = content.items, onArtworkClick = onArtworkClick)
+                        ResultsGrid(
+                            items = content.items,
+                            onArtworkClick = onArtworkClick,
+                            loadMore = content.loadMore,
+                            onLoadMore = onLoadMore,
+                        )
                     }
 
                     is SearchContent.NoResults -> {
