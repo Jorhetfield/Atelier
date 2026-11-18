@@ -93,6 +93,7 @@ private fun Search(
             onSubmit = {},
             onRetry = {},
             onHomeRetry = {},
+            onLoadMore = {},
             onArtworkClick = {},
         )
     }

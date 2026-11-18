@@ -26,8 +26,8 @@ class ArtworkRepositoryCacheTest {
         runTest {
             fixture.enqueue(searchJson(artworkJson(1)))
 
-            val first = repository.search("monet")
-            val second = repository.search("monet")
+            val first = repository.search("monet", 1)
+            val second = repository.search("monet", 1)
 
             assertEquals(first, second)
             assertEquals(1, fixture.server.requestCount)
@@ -37,10 +37,10 @@ class ArtworkRepositoryCacheTest {
     fun `an entry still valid just before the ttl is not refetched`() =
         runTest {
             fixture.enqueue(searchJson(artworkJson(1)))
-            repository.search("monet")
+            repository.search("monet", 1)
 
             fixture.time += 2.minutes + 59.seconds
-            repository.search("monet")
+            repository.search("monet", 1)
 
             assertEquals(1, fixture.server.requestCount)
         }
@@ -50,13 +50,34 @@ class ArtworkRepositoryCacheTest {
         runTest {
             fixture.enqueue(searchJson(artworkJson(1, title = "Old")))
             fixture.enqueue(searchJson(artworkJson(1, title = "New")))
-            assertEquals("Old", repository.search("monet").single().title)
+            assertEquals(
+                "Old",
+                repository
+                    .search("monet", 1)
+                    .artworks
+                    .single()
+                    .title,
+            )
 
             fixture.time += 3.minutes
 
-            assertEquals("New", repository.search("monet").single().title)
+            assertEquals(
+                "New",
+                repository
+                    .search("monet", 1)
+                    .artworks
+                    .single()
+                    .title,
+            )
             assertEquals(2, fixture.server.requestCount)
-            assertEquals("New", repository.search("monet").single().title)
+            assertEquals(
+                "New",
+                repository
+                    .search("monet", 1)
+                    .artworks
+                    .single()
+                    .title,
+            )
             assertEquals(2, fixture.server.requestCount)
         }
 
@@ -66,9 +87,30 @@ class ArtworkRepositoryCacheTest {
             fixture.enqueue(searchJson(artworkJson(1)))
             fixture.enqueue(searchJson(artworkJson(2)))
 
-            assertEquals(1, repository.search("monet").single().id)
-            assertEquals(2, repository.search("seurat").single().id)
-            assertEquals(1, repository.search("monet").single().id)
+            assertEquals(
+                1,
+                repository
+                    .search("monet", 1)
+                    .artworks
+                    .single()
+                    .id,
+            )
+            assertEquals(
+                2,
+                repository
+                    .search("seurat", 1)
+                    .artworks
+                    .single()
+                    .id,
+            )
+            assertEquals(
+                1,
+                repository
+                    .search("monet", 1)
+                    .artworks
+                    .single()
+                    .id,
+            )
             assertEquals(2, fixture.server.requestCount)
         }
 
@@ -77,8 +119,8 @@ class ArtworkRepositoryCacheTest {
         runTest {
             fixture.enqueue(searchJson(artworkJson(1)))
 
-            repository.search("  Monet ")
-            repository.search("monet")
+            repository.search("  Monet ", 1)
+            repository.search("monet", 1)
 
             assertEquals(1, fixture.server.requestCount)
             assertTrue(
@@ -95,8 +137,8 @@ class ArtworkRepositoryCacheTest {
             fixture.enqueue("{}", code = 500)
             fixture.enqueue(searchJson(artworkJson(1)))
 
-            assertThrows<ArtworkException.ServerError> { repository.search("monet") }
-            assertEquals(1, repository.search("monet").size)
+            assertThrows<ArtworkException.ServerError> { repository.search("monet", 1) }
+            assertEquals(1, repository.search("monet", 1).artworks.size)
             assertEquals(2, fixture.server.requestCount)
         }
 
@@ -105,8 +147,8 @@ class ArtworkRepositoryCacheTest {
         runTest {
             fixture.enqueue(searchJson(artworkJson(1, score = 0.00002)))
 
-            assertTrue(repository.search("qwertyuiop").isEmpty())
-            assertTrue(repository.search("qwertyuiop").isEmpty())
+            assertTrue(repository.search("qwertyuiop", 1).artworks.isEmpty())
+            assertTrue(repository.search("qwertyuiop", 1).artworks.isEmpty())
             assertEquals(1, fixture.server.requestCount)
         }
 
@@ -114,7 +156,7 @@ class ArtworkRepositoryCacheTest {
     fun `an artwork found by a search is available without another request`() =
         runTest {
             fixture.enqueue(searchJson(artworkJson(27992, title = "La Grande Jatte")))
-            repository.search("seurat")
+            repository.search("seurat", 1)
 
             val artwork = repository.getArtwork(27992)
 
