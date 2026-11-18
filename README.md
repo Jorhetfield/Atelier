@@ -274,6 +274,9 @@ Coil 3 with the blurred LQIP placeholder underneath, so there is something on sc
 ### Search screen polish
 A large title that collapses on scroll with the search field pinned, a pill search field, staggered entrance on first load, card press feedback, and animated switching between idle, loading, results, no results and error. Layouts are edge to edge, support large font scale, and adapt the number of columns to the width.
 
+### The search field keeps its own text
+The text of the field is held by the screen, not read back from the view model. Reading it back through the view model's flows (`combine`, `stateIn`, `collectAsStateWithLifecycle`) delays it by a frame or more, and when several characters arrive at once (paste, dictation, glide typing, autocorrect) a `TextField` repaints the stale text and drops or reorders letters. I found this by typing 26 characters at once over `adb`: five runs out of six came out corrupted, against none in a control text field. The view model still receives every change, so the debounce and the cancellation are untouched, and its query only seeds the field. It has no unit test because it is behaviour of the field and the keyboard; I checked it by hand with the same bursts.
+
 ### Relevance filter
 The API reports the same `total` for any query, so `_score` is the only way to know a search found nothing. Dropping results under a score of 0.01 turns junk into a proper designed "no results" state. The threshold is measured, not guessed: non-matches score around 0.00002 and real matches score 8 or more.
 
