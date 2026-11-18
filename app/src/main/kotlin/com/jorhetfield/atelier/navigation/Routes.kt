@@ -1,10 +1,17 @@
 package com.jorhetfield.atelier.navigation
 
 import androidx.navigation3.runtime.NavKey
+import com.jorhetfield.atelier.ui.home.HomeShelf
 import kotlinx.serialization.Serializable
 
 @Serializable
 data object SearchRoute : NavKey
+
+// The full list behind a Home shelf.
+@Serializable
+data class ShelfRoute(
+    val shelf: HomeShelf,
+) : NavKey
 
 @Serializable
 data class DetailRoute(

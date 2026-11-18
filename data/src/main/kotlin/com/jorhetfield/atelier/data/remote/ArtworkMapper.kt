@@ -22,8 +22,10 @@ internal fun SearchResponseDto.toSearchPage(page: Int): SearchPage {
     return SearchPage(relevant, hasMore = !endedHere && page < MAX_PAGE)
 }
 
-// A filter query has no text relevance, so there is no score to judge by and nothing to drop.
-internal fun SearchResponseDto.toHighlights(): List<Artwork> = data.map { it.toDomain() }
+// A filter query has no text relevance, so there is no score to judge by and nothing to drop. Without
+// noise to tell the end by, a page that is not full is the last one.
+internal fun SearchResponseDto.toHighlightsPage(): SearchPage =
+    SearchPage(data.map { it.toDomain() }, hasMore = data.size == HIGHLIGHTS_SIZE)
 
 internal fun ArtworkDto.toDomain(): Artwork =
     Artwork(

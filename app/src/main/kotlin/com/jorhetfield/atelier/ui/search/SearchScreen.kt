@@ -42,6 +42,7 @@ import com.jorhetfield.atelier.designsystem.component.AtelierLoadingState
 import com.jorhetfield.atelier.designsystem.component.AtelierSearchField
 import com.jorhetfield.atelier.designsystem.theme.AtelierTheme
 import com.jorhetfield.atelier.ui.home.HomeContent
+import com.jorhetfield.atelier.ui.home.HomeShelf
 import com.jorhetfield.atelier.ui.home.HomeUiState
 import com.jorhetfield.atelier.ui.home.HomeViewModel
 import com.jorhetfield.atelier.ui.model.messageRes
@@ -50,6 +51,7 @@ import com.jorhetfield.atelier.ui.model.titleRes
 @Composable
 fun SearchScreen(
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -65,6 +67,7 @@ fun SearchScreen(
         onHomeRetry = homeViewModel::retry,
         onLoadMore = viewModel::loadMore,
         onArtworkClick = onArtworkClick,
+        onShelfClick = onShelfClick,
         modifier = modifier,
     )
 }
@@ -82,6 +85,7 @@ fun SearchScreenContent(
     onHomeRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onArtworkClick: (Int) -> Unit,
+    onShelfClick: (HomeShelf) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val motion = MaterialTheme.motionScheme
@@ -118,7 +122,12 @@ fun SearchScreenContent(
             ) { content ->
                 when (content) {
                     SearchContent.Idle -> {
-                        HomeContent(state = home, onArtworkClick = onArtworkClick, onRetry = onHomeRetry)
+                        HomeContent(
+                            state = home,
+                            onArtworkClick = onArtworkClick,
+                            onShelfClick = onShelfClick,
+                            onRetry = onHomeRetry,
+                        )
                     }
 
                     is SearchContent.Loading -> {

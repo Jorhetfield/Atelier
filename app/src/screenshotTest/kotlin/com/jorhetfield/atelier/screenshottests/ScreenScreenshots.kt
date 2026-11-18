@@ -18,6 +18,8 @@ import com.jorhetfield.atelier.ui.model.ErrorKind
 import com.jorhetfield.atelier.ui.search.SearchContent
 import com.jorhetfield.atelier.ui.search.SearchScreenContent
 import com.jorhetfield.atelier.ui.search.SearchUiState
+import com.jorhetfield.atelier.ui.shelf.ShelfScreenContent
+import com.jorhetfield.atelier.ui.shelf.ShelfUiState
 
 private val titles =
     listOf(
@@ -95,6 +97,7 @@ private fun Search(
             onHomeRetry = {},
             onLoadMore = {},
             onArtworkClick = {},
+            onShelfClick = {},
         )
     }
 }
@@ -135,3 +138,28 @@ fun DetailScreenshot() = Detail(DetailUiState.Success(sampleDetail))
 @AtelierScreenPreviews
 @Composable
 fun DetailErrorScreenshot() = Detail(DetailUiState.Failure(ErrorKind.NotFound))
+
+@Composable
+private fun Shelf(state: ShelfUiState) {
+    AtelierTheme(dynamicColor = false) {
+        ShelfScreenContent(
+            title = "Monet",
+            subtitle = "Light, water and haystacks",
+            state = state,
+            onBack = {},
+            onArtworkClick = {},
+            onRetry = {},
+            onLoadMore = {},
+        )
+    }
+}
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfScreenshot() = Shelf(ShelfUiState.Content(sampleArtworks))
+
+@PreviewTest
+@AtelierScreenPreviews
+@Composable
+fun ShelfErrorScreenshot() = Shelf(ShelfUiState.Failure(ErrorKind.Offline))

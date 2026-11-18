@@ -12,5 +12,6 @@ public interface ArtworkRepository {
 
     public suspend fun getArtwork(id: Int): Artwork
 
-    public suspend fun getHighlights(): List<Artwork>
+    // The museum's flagged showpieces, best ranked first. Pages start at 1.
+    public suspend fun getHighlights(page: Int): SearchPage
 }

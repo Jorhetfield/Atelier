@@ -3,7 +3,7 @@ package com.jorhetfield.atelier.data
 import com.jorhetfield.atelier.data.cache.TtlCache
 import com.jorhetfield.atelier.data.remote.ArtworkApi
 import com.jorhetfield.atelier.data.remote.toDomain
-import com.jorhetfield.atelier.data.remote.toHighlights
+import com.jorhetfield.atelier.data.remote.toHighlightsPage
 import com.jorhetfield.atelier.data.remote.toSearchPage
 import com.jorhetfield.atelier.data.remote.translatingErrors
 import com.jorhetfield.atelier.domain.model.Artwork
@@ -20,7 +20,7 @@ internal class ArtworkRepositoryImpl(
     private val api: ArtworkApi,
     private val searchCache: TtlCache<SearchKey, SearchPage>,
     private val artworkCache: TtlCache<Int, Artwork>,
-    private val highlightsCache: TtlCache<Unit, List<Artwork>>,
+    private val highlightsCache: TtlCache<Int, SearchPage>,
 ) : ArtworkRepository {
     override suspend fun search(
         query: String,
@@ -44,12 +44,12 @@ internal class ArtworkRepositoryImpl(
         return artwork
     }
 
-    override suspend fun getHighlights(): List<Artwork> {
-        highlightsCache.get(Unit)?.let { return it }
+    override suspend fun getHighlights(page: Int): SearchPage {
+        highlightsCache.get(page)?.let { return it }
 
-        val artworks = translatingErrors { api.highlights() }.toHighlights()
-        highlightsCache.put(Unit, artworks)
-        artworkCache.putAll(artworks.associateBy { it.id })
-        return artworks
+        val result = translatingErrors { api.highlights(page = page) }.toHighlightsPage()
+        highlightsCache.put(page, result)
+        artworkCache.putAll(result.artworks.associateBy { it.id })
+        return result
     }
 }

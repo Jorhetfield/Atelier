@@ -56,6 +56,6 @@ internal fun buildArtworkRepository(
         api = api,
         searchCache = TtlCache<SearchKey, SearchPage>(cacheTtl, timeSource),
         artworkCache = TtlCache<Int, Artwork>(cacheTtl, timeSource),
-        highlightsCache = TtlCache<Unit, List<Artwork>>(cacheTtl, timeSource),
+        highlightsCache = TtlCache<Int, SearchPage>(cacheTtl, timeSource),
     )
 }
