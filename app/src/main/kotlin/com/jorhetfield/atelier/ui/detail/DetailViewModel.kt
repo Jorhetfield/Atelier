@@ -10,18 +10,12 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = DetailViewModel.Factory::class)
 class DetailViewModel
     @AssistedInject
@@ -29,30 +23,34 @@ class DetailViewModel
         @Assisted private val artworkId: Int,
         private val getArtwork: GetArtworkUseCase,
     ) : ViewModel() {
-        private val retries = Channel<Unit>(Channel.CONFLATED)
+        private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
+        val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
-        val uiState: StateFlow<DetailUiState> =
-            retries
-                .receiveAsFlow()
-                .onStart { emit(Unit) }
-                .flatMapLatest { load() }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState.Loading)
+        private var loadJob: Job? = null
 
-        fun retry() {
-            retries.trySend(Unit)
+        init {
+            load()
         }
 
-        private fun load(): Flow<DetailUiState> =
-            flow {
-                emit(DetailUiState.Loading)
-                emit(
-                    try {
-                        DetailUiState.Success(getArtwork(artworkId).toDetailUi())
-                    } catch (e: ArtworkException) {
-                        DetailUiState.Failure(e.toErrorKind())
-                    },
-                )
-            }
+        fun retry() = load()
+
+        // viewModelScope runs on Main.immediate, so a cached artwork (the repository answers without
+        // suspending) is published before the first frame: Loading is only ever seen when there is
+        // a real wait. The state also lives in the view model, not in a stateIn that restarts after
+        // the screen has been off for a while, so coming back from the viewer never flashes Loading.
+        private fun load() {
+            loadJob?.cancel()
+            _uiState.value = DetailUiState.Loading
+            loadJob =
+                viewModelScope.launch {
+                    _uiState.value =
+                        try {
+                            DetailUiState.Success(getArtwork(artworkId).toDetailUi())
+                        } catch (e: ArtworkException) {
+                            DetailUiState.Failure(e.toErrorKind())
+                        }
+                }
+        }
 
         @AssistedFactory
         interface Factory {

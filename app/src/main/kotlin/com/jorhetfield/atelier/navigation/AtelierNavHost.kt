@@ -28,15 +28,14 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
     val motion = MaterialTheme.motionScheme
 
     // The detail rises from below over the search and leaves the same way. While it leaves it must
-    // stay on top, hence the negative z-index on the screen that is coming back.
+    // stay on top, hence the negative z-index on the screen that is coming back. The sheet itself is
+    // never faded: a translucent detail lets the search show through it while it enters, leaves or a
+    // back gesture is cancelled, and it reads as a half-loaded screen.
     val rise =
-        slideInVertically(motion.defaultSpatialSpec()) { it } + fadeIn(motion.defaultEffectsSpec()) togetherWith
+        slideInVertically(motion.defaultSpatialSpec()) { it } togetherWith
             fadeOut(motion.defaultEffectsSpec(), targetAlpha = 0.5f)
     val sink =
-        (
-            EnterTransition.None togetherWith
-                (slideOutVertically(motion.defaultSpatialSpec()) { it } + fadeOut(motion.fastEffectsSpec()))
-        ).apply {
+        (EnterTransition.None togetherWith slideOutVertically(motion.defaultSpatialSpec()) { it }).apply {
             targetContentZIndex = -1f
         }
 
