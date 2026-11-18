@@ -205,7 +205,7 @@ query (StateFlow)
 - Everything below is `suspend`: ViewModel, use case, repository, Retrofit. Retrofit's suspend support cancels the underlying OkHttp call, so the HTTP request itself is aborted, not just ignored.
 - `CancellationException` is rethrown first in the error translation, before any other `catch`. It is never turned into an error state.
 - Pressing the keyboard's search action or retry bypasses the debounce through a `Channel(CONFLATED)`, so those events are never lost and never duplicated.
-- **The state always reflects the current query.** A failed or empty search never shows older results, which is the strict reading of the brief. The one exception is purely visual: while a *new* search is loading, the previous results appear blurred and inert behind the loading indicator (`SearchContent.Loading(previous)`). They are not clickable and are hidden from accessibility, and they vanish on failure or no results.
+- **The state always reflects the current query.** A failed or empty search never shows older results, which is the strict reading of the brief. While a new search loads, nothing of the previous one stays on screen: the list gives way to the loading indicator. An earlier version kept the last results blurred and inert behind the loader; I removed it because it was the one place where the literal requirement, "results of previous searches must not be shown", could be read as broken.
 - **Paging follows the same rule.** `loadMore()` runs as its own job, which is cancelled the moment a new search begins, and a page only lands if the term it was requested for is still the one on screen. Two tests prove each half: the in-flight page is cancelled, and a slow page of an earlier search never appears in a newer one. A page that is already on its way is never requested twice, a failed page keeps what is shown and offers a retry for the same page, and an artwork that shifts between pages is listed once because the grid is keyed by id.
 - On the Home, each shelf loads in its own coroutine, so a slow or failing shelf never blocks the others.
 
@@ -232,7 +232,7 @@ Things to know honestly:
 - The screenshot testing engine is still **alpha** (`0.0.1-alpha17`). It is the one place where I accepted a pre-release dependency, because it is Google's official tooling and the alternative is no visual regression testing at all. It sits behind two experimental Gradle flags in `gradle.properties`.
 - The references were recorded on Windows. Rendering differs slightly across operating systems, so these tests **do not run in CI**. CI runs Spotless and the unit tests.
 - The tests live in `:app` because the engine fails to resolve resource classes inside a library module.
-- The loading state has no screenshot: it is an animated indicator and Layoutlib does not render the blur.
+- The loading state has no screenshot: it is an animated indicator, which a single frame cannot capture.
 
 ---
 

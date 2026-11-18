@@ -202,7 +202,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `previous results stay behind the loader but vanish when the new search fails`() =
+    fun `nothing of the previous search stays on screen while the next one loads or fails`() =
         runTest {
             val first = listOf(artwork(1, title = "First"))
             repository.onSearch = { term ->
@@ -220,9 +220,9 @@ class SearchViewModelTest {
             assertEquals(
                 listOf(
                     SearchContent.Idle,
-                    SearchContent.Loading(),
+                    SearchContent.Loading,
                     SearchContent.Results(first.map { it.toUi() }),
-                    SearchContent.Loading(previous = first.map { it.toUi() }),
+                    SearchContent.Loading,
                     SearchContent.Failure(ErrorKind.Generic),
                 ),
                 seen.contents(),
