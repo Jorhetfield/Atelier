@@ -12,6 +12,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -23,6 +27,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.jorhetfield.atelier.ui.detail.DetailScreen
 import com.jorhetfield.atelier.ui.model.ArtworkImageUi
+import com.jorhetfield.atelier.ui.search.ResultsLayout
 import com.jorhetfield.atelier.ui.search.SearchScreen
 import com.jorhetfield.atelier.ui.shelf.ShelfScreen
 import com.jorhetfield.atelier.ui.viewer.ArtworkViewerScreen
@@ -30,6 +35,8 @@ import com.jorhetfield.atelier.ui.viewer.ArtworkViewerScreen
 @Composable
 fun AtelierNavHost(modifier: Modifier = Modifier) {
     val backStack = rememberNavBackStack(SearchRoute)
+    // One choice for the search and the shelf screens, kept across rotations. The list is the default.
+    var layout by rememberSaveable { mutableStateOf(ResultsLayout.List) }
     val motion = MaterialTheme.motionScheme
 
     // The detail rises from below over the search and leaves the same way. While it leaves it must
@@ -97,6 +104,8 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
                         onShelfClick = { shelf ->
                             if (backStack.lastOrNull() is SearchRoute) backStack.add(ShelfRoute(shelf))
                         },
+                        layout = layout,
+                        onLayoutChange = { layout = it },
                     )
                 }
                 entry<ShelfRoute>(
@@ -113,6 +122,8 @@ fun AtelierNavHost(modifier: Modifier = Modifier) {
                         onArtworkClick = { id ->
                             if (backStack.lastOrNull() is ShelfRoute) backStack.add(DetailRoute(id))
                         },
+                        layout = layout,
+                        onLayoutChange = { layout = it },
                     )
                 }
                 entry<DetailRoute> { key ->

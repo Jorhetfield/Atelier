@@ -31,7 +31,7 @@ Dark theme and dynamic color work too:
 
 | Requirement | Where it lives |
 |---|---|
-| Search screen: text field and a list of results | `app/.../ui/search/SearchScreen.kt`, `ResultsGrid.kt` |
+| Search screen: text field and a list of results | `app/.../ui/search/SearchScreen.kt`, `ResultsList.kt` (the default), `ResultsGrid.kt` (an optional layout) |
 | A new search cancels the one in flight, stale results never shown | `SearchViewModel` (`flatMapLatest`), proven by a dedicated test, see [section 6](#6-cancellation-and-concurrency) |
 | Detail screen opened from an item, at least 3 fields | `app/.../ui/detail/DetailScreen.kt`: title, artist, date, medium, origin, dimensions, classification, style and the public-domain flag (up to 9 fields; empty ones are hidden, and the fewest visible on 600 sampled artworks was 5) |
 | Clear Data / Domain / Presentation separation | Three Gradle modules, plus a design system module. [Section 4](#4-architecture) |
@@ -44,7 +44,7 @@ Dark theme and dynamic color work too:
 | Presentation tests (optional, valued) | `app/src/test`: 46 tests with Turbine and `runTest` |
 | Short README | You are reading it |
 
-One honest note: the brief says "list". Results are shown in an adaptive staggered grid because artworks have wildly different aspect ratios and a uniform list would crop or letterbox most of them. It is still a lazily composed list of items that opens a detail on tap.
+A note on "list": results open as a list, as the brief says. Because this is a museum and the pictures are the point, there is also a clearly visible **List | Grid** switch under the search field. The grid is an adaptive staggered layout that respects each artwork's aspect ratio, which a uniform list would crop. The choice is kept while the app is open, across rotations and between the search and the shelf screens.
 
 ---
 
@@ -82,6 +82,7 @@ Endpoints used:
 | Highlights responses carry no `_score` | The highlights mapper deliberately skips the relevance filter, and a highlights page is the last one when it is not full (36 pages of 12, the last with 6) |
 | Several fields (`image_id`, `artist_display`, ...) can be null | The mapper is defensive; an artwork without a picture is still a valid item |
 | The image server never upscales | Requests are clamped to the original width (`thumbnail.width`), see `ArtworkImageUi.url` |
+| The image server only serves certain widths: 400, 600, 1200 and 1686 work, an arbitrary 300 came back empty | The app sticks to those widths. The list and the grid ask for the same one (400), so switching layout reuses what is already downloaded |
 | `Accept-Language` and `?lang=` are ignored | Data is English only, so the UI is English only too |
 | Error body is `{"status","error","detail"}`; 404 unknown id, 400 malformed id, 403 for oversized `limit` | Mapped to typed domain exceptions |
 
@@ -212,7 +213,7 @@ query (StateFlow)
 
 ## 7. Testing
 
-**130 unit tests** across the three logic layers, plus **54 screenshot references**.
+**130 unit tests** across the three logic layers, plus **70 screenshot references**.
 
 | Layer | Tests | Approach |
 |---|---|---|
@@ -293,7 +294,6 @@ GitHub Actions on every push and pull request: Spotless and all unit tests. Git 
 - **Tablet layout** works (adaptive columns) but is not tuned: on very wide screens a maximum content width and a list-detail layout would read better.
 - **Launcher icon** is the default one.
 - **Screenshot tests are not in CI**, because the references were recorded on Windows. Recording them on a Linux runner would fix that.
-- **Search results are a grid, not a list**, as explained at the top.
 
 ---
 

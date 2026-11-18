@@ -1,8 +1,11 @@
 package com.jorhetfield.atelier.ui.search
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -52,6 +55,8 @@ import com.jorhetfield.atelier.ui.model.titleRes
 fun SearchScreen(
     onArtworkClick: (Int) -> Unit,
     onShelfClick: (HomeShelf) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -68,6 +73,8 @@ fun SearchScreen(
         onLoadMore = viewModel::loadMore,
         onArtworkClick = onArtworkClick,
         onShelfClick = onShelfClick,
+        layout = layout,
+        onLayoutChange = onLayoutChange,
         modifier = modifier,
     )
 }
@@ -86,6 +93,8 @@ fun SearchScreenContent(
     onLoadMore: () -> Unit,
     onArtworkClick: (Int) -> Unit,
     onShelfClick: (HomeShelf) -> Unit,
+    layout: ResultsLayout,
+    onLayoutChange: (ResultsLayout) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val motion = MaterialTheme.motionScheme
@@ -111,6 +120,18 @@ fun SearchScreenContent(
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             SearchField(query = state.query, onQueryChange = onQueryChange, onSubmit = onSubmit)
 
+            // Only worth showing when there is a list to lay out.
+            val content = state.content
+            AnimatedVisibility(
+                visible =
+                    content is SearchContent.Results ||
+                        (content is SearchContent.Loading && content.previous.isNotEmpty()),
+                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                exit = shrinkVertically(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
+            ) {
+                ResultsLayoutToggle(layout = layout, onLayoutChange = onLayoutChange)
+            }
+
             AnimatedContent(
                 targetState = state.content,
                 contentKey = { it::class },
@@ -131,12 +152,13 @@ fun SearchScreenContent(
                     }
 
                     is SearchContent.Loading -> {
-                        LoadingContent(content, onArtworkClick)
+                        LoadingContent(content, layout, onArtworkClick)
                     }
 
                     is SearchContent.Results -> {
-                        ResultsGrid(
+                        ArtworkResults(
                             items = content.items,
+                            layout = layout,
                             onArtworkClick = onArtworkClick,
                             loadMore = content.loadMore,
                             onLoadMore = onLoadMore,
@@ -193,12 +215,14 @@ private fun SearchField(
 @Composable
 private fun LoadingContent(
     content: SearchContent.Loading,
+    layout: ResultsLayout,
     onArtworkClick: (Int) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (content.previous.isNotEmpty()) {
-            ResultsGrid(
+            ArtworkResults(
                 items = content.previous,
+                layout = layout,
                 onArtworkClick = onArtworkClick,
                 interactive = false,
                 modifier = Modifier.blur(16.dp).alpha(0.5f).clearAndSetSemantics {},
