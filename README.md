@@ -1,6 +1,20 @@
 # Atelier
 
+[![CI](https://github.com/Jorhetfield/Atelier/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jorhetfield/Atelier/actions/workflows/ci.yml)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?logo=kotlin&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3_Expressive-4285F4?logo=jetpackcompose&logoColor=white)
+![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?logo=android&logoColor=white)
+
 An Android app to search and browse the collection of the [Art Institute of Chicago](https://www.artic.edu), built as a technical test. It does what the brief asks (search, cancellation, detail, cache, tests, clear layers) and then puts real effort into how it looks and feels.
+
+**In short**
+
+- **API:** Art Institute of Chicago, public, no key.
+- **Cancellation:** `debounce` then `flatMapLatest`, with everything below it `suspend`, so a new search aborts the OkHttp call and a slow search can never overwrite a newer one.
+- **Cache:** in memory, per query and page, 3 minute TTL, injectable clock. A valid entry makes no network call.
+- **Layers:** `:domain` (pure Kotlin), `:data`, `:designsystem` and `:app` as Gradle modules, so the compiler enforces the boundaries.
+- **Tests:** 130 unit tests (domain with mocked repositories, data with MockWebServer and a fake clock, presentation with Turbine).
+- **Run it:** `./gradlew :app:installDebug`, or open the folder in Android Studio. [Details](#how-to-run).
 
 | Home | Search | Grid | Detail | Viewer | Dark |
 |:---:|:---:|:---:|:---:|:---:|:---:|
@@ -110,6 +124,17 @@ Why modules rather than packages: `:domain` cannot import Retrofit or Android ev
 
 `data/.../cache/TtlCache.kt`, used by `ArtworkRepositoryImpl`.
 
+```mermaid
+flowchart LR
+    A[search query, page] --> B[normalize key]
+    B --> C{valid entry?}
+    C -- yes --> D[return cached, no network call]
+    C -- "expired or missing" --> E[fetch from API]
+    E --> F{success?}
+    F -- yes --> G[store with timestamp] --> H[return]
+    F -- no --> I[throw, nothing cached]
+```
+
 - **Key**: the normalized query (`trim` and lowercase), so `"Monet"`, `" monet "` and `"MONET"` share one entry. Every page of a query is its own entry.
 - **TTL**: 3 minutes, inside the 2 to 5 required. A collection barely changes, and 3 minutes covers a browsing session without hiding anything for long.
 - **Valid hit**: returned immediately, **no network call**. **Expired or missing**: fetch, store, return. Expiry is checked on read and expired entries are purged on write.
@@ -124,6 +149,25 @@ Deliberate non-feature: two identical requests at the same moment are not merged
 
 ```
 query → debounce(300 ms) → trim → distinctUntilChanged → flatMapLatest { search }
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant VM as SearchViewModel
+    participant R as Repository
+    participant N as Network
+
+    U->>VM: "mon"
+    VM->>R: search("mon")
+    R->>N: GET (slow)
+    U->>VM: "monet"
+    Note over VM,N: flatMapLatest cancels search A and aborts its OkHttp call
+    VM->>R: search("monet")
+    R->>N: GET
+    N-->>R: results for "monet"
+    R-->>VM: results
+    VM-->>U: results for "monet" only
 ```
 
 - `flatMapLatest` cancels the previous search the moment a new term arrives, so a slow search A **cannot** overwrite a later search B. A test makes A slower than B and checks the final state is B.
